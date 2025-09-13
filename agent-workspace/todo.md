@@ -1,0 +1,9 @@
+todo
+triage: now / next / later. keep items small. link to decisions/research.
+
+now
+…
+next
+…
+later
+…
