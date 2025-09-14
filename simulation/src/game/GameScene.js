@@ -21,6 +21,9 @@ export default class GameScene extends Phaser.Scene {
     this.SPRINT_SPEED = 350;
     this.BASE_JUMP_FORCE = -650;
     this.SPRINT_JUMP_FORCE = -750;
+    this.WALL_SLIDE_SPEED = 100;
+    this.WALL_JUMP_FORCE_Y = -550;
+    this.WALL_JUMP_FORCE_X = 350;
 
     // In create(), near this.isAIControlled
     this.isAISprinting = false;
@@ -179,6 +182,20 @@ export default class GameScene extends Phaser.Scene {
       const isSprinting = this.keyShift.isDown;
       const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
 
+      // Wall slide and jump logic
+      const onWallLeft = this.player.body.touching.left && !this.player.body.touching.down;
+      const onWallRight = this.player.body.touching.right && !this.player.body.touching.down;
+      let isWallSliding = false;
+
+      if ((onWallLeft && (this.cursors.left.isDown || this.keys.left.isDown)) ||
+          (onWallRight && (this.cursors.right.isDown || this.keys.right.isDown))) {
+        isWallSliding = true;
+      }
+
+      if (isWallSliding) {
+        this.player.setVelocityY(this.WALL_SLIDE_SPEED);
+      }
+
       // Horizontal Movement
       if (this.cursors.left.isDown || this.keys.left.isDown) {
         this.player.setVelocityX(-targetSpeed);
@@ -192,11 +209,17 @@ export default class GameScene extends Phaser.Scene {
       }
 
       // Jumping
-      if (isJumpKeyDown && this.jumps < this.maxJumps) {
-        this.jumps++;
-        const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
-        this.player.setVelocityY(jumpForce);
-
+      if (isJumpKeyDown) {
+        if (isWallSliding) {
+          // Wall jump
+          const wallJumpX = onWallLeft ? this.WALL_JUMP_FORCE_X : -this.WALL_JUMP_FORCE_X;
+          this.player.setVelocity(wallJumpX, this.WALL_JUMP_FORCE_Y);
+        } else if (this.jumps < this.maxJumps) {
+          // Regular jump
+          this.jumps++;
+          const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
+          this.player.setVelocityY(jumpForce);
+        }
       }
     }
 
