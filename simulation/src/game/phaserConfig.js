@@ -6,7 +6,7 @@ const phaserConfig = {
   width: 1280,
   height: 720,
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   // The 'parent' property will be set dynamically in our React component.

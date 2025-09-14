@@ -57,7 +57,14 @@ const PhaserGame = () => {
       </div>
       <button
         onClick={handleToggleControl}
-        className="possess-button"
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '10px 20px',
+          cursor: 'pointer',
+          zIndex: 10,
+        }}
       >
         {isPlayerControlled ? 'Release Control' : 'Possess'}
       </button>
