@@ -81,6 +81,31 @@ export default class GameScene extends Phaser.Scene {
     this.maxJumps = 2;
 
     // Set up keyboard input.
+    // --- INPUT CAPTURE SOLUTION ---
+    // We list all the key codes the game should "own"
+    const GAME_KEYS = [
+      'Space',
+      'ShiftLeft',
+      'ShiftRight',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'KeyW',
+      'KeyA',
+      'KeyS',
+      'KeyD'
+    ];
+
+    // Listen for ANY keydown event
+    this.input.keyboard.on('keydown', (event) => {
+      // Check if the pressed key is one of our designated game keys
+      if (GAME_KEYS.includes(event.code)) {
+        // THIS IS THE FIX:
+        // Stop the browser from performing its default action (like clicking a button)
+        event.preventDefault();
+      }
+    });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.keys = this.input.keyboard.addKeys({
@@ -103,7 +128,7 @@ export default class GameScene extends Phaser.Scene {
     if (!isUICall) {
       // If the call is not from the UI, check if AI is already active.
       // If AI is active, do nothing. This prevents accidental toggling from keyboard events.
-      if (this.isAIControlled || this.keyShift.isDown) {
+      if (this.isAIControlled) {
         return !this.isAIControlled;
       }
     }
