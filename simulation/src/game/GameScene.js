@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import LevelGenerator from './LevelGenerator'; // Add this at the top
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -33,24 +34,13 @@ export default class GameScene extends Phaser.Scene {
     // This method is called once when the scene is created.
     // Set the background color to white.
     this.cameras.main.setBackgroundColor('#ffffff');
+    // In the create() method: this.levelGenerator = new LevelGenerator(this);
+    this.levelGenerator = new LevelGenerator(this);
 
     // Create a static group for platforms.
-    const platforms = this.physics.add.staticGroup();
+    this.platforms = this.physics.add.staticGroup();
 
-    // Create the ground and two platforms.
-    // We create them as black rectangles and then add them to the static physics group.
-    const ground = this.add.rectangle(400, 584, 800, 32, 0x000000);
-    platforms.add(ground);
-
-    const platform1 = this.add.rectangle(600, 450, 200, 32, 0x000000);
-    platforms.add(platform1);
-
-    const platform2 = this.add.rectangle(200, 350, 200, 32, 0x000000);
-    platforms.add(platform2);
-
-    // After adding Game Objects to a static group, we must refresh the group.
-    // This creates the physics bodies for the objects, making them solid.
-    platforms.refresh();
+    this.redrawLevel(this.scale.gameSize);
 
     // Create the player sprite.
     this.player = this.physics.add.sprite(100, 450, 'player');
@@ -60,7 +50,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
 
     // Add a collider between the player and the platforms.
-    this.physics.add.collider(this.player, platforms);
+    this.physics.add.collider(this.player, this.platforms);
 
     this.jumps = 0;
     this.maxJumps = 2;
@@ -173,5 +163,18 @@ export default class GameScene extends Phaser.Scene {
         this.player.setVelocityY(jumpForce);
       }
     }
+  }
+  // In GameScene.js, replace the contents of redrawLevel with this:
+  redrawLevel(gameSize) {
+    const width = gameSize.width;
+    const height = gameSize.height;
+    // Update the world bounds
+    this.physics.world.setBounds(0, 0, width, height);
+
+    // Clear any previous platforms
+    this.platforms.clear(true, true);
+
+    // Generate a new, traversable level with 20 platforms
+    this.levelGenerator.generate(this.platforms, 20);
   }
 }
