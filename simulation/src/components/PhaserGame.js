@@ -51,22 +51,25 @@ const PhaserGame = () => {
 
   // This div is where the Phaser canvas will be injected.
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: '1280px', margin: 'auto' }}>
-      <div style={{ position: 'relative', width: '100%', height: 0, paddingTop: '56.25%' }}>
-        <div id="phaser-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
-      </div>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
       <button
         onClick={handleToggleControl}
         style={{
           position: 'absolute',
           top: '20px',
           right: '20px',
-          padding: '10px 20px',
+          padding: '10px',
+          fontSize: '14px',
           cursor: 'pointer',
           zIndex: 10,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          color: 'white',
+          border: '1px solid white',
+          borderRadius: '5px'
         }}
       >
-        {isPlayerControlled ? 'Release Control' : 'Possess'}
+        <span role="img" aria-label="spiral">🌀</span> {isPlayerControlled ? 'Release' : 'Possess'}
       </button>
     </div>
   );

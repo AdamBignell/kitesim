@@ -2,11 +2,15 @@ import GameLoader from '../components/GameLoader';
 
 export default function Home() {
   return (
-    <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#111' }}>
-      <div>
-        <h1 style={{ textAlign: 'center', color: 'white', fontFamily: 'Arial' }}>DisasterSword</h1>
-        <GameLoader />
-      </div>
+    <main style={{
+      width: '100vw',
+      height: '100vh',
+      backgroundColor: '#000',
+      margin: 0,
+      padding: 0,
+      overflow: 'hidden'
+    }}>
+      <GameLoader />
     </main>
   );
 }
