@@ -9,10 +9,10 @@ export default class GameScene extends Phaser.Scene {
 
   preload() {
     // Load the sprite sheets for the player character.
-    this.load.svg('idle', 'assets/sprites/idle.svg', { width: 32, height: 32 });
-    this.load.svg('walk', 'assets/sprites/walk.svg', { width: 32, height: 32 });
-    this.load.svg('sprint', 'assets/sprites/sprint.svg', { width: 32, height: 32 });
-    this.load.svg('jump', 'assets/sprites/jump.svg', { width: 32, height: 32 });
+    this.load.spritesheet('idle', 'assets/sprites/idle.svg', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('walk', 'assets/sprites/walk.svg', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('sprint', 'assets/sprites/sprint.svg', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('jump', 'assets/sprites/jump.svg', { frameWidth: 32, frameHeight: 32 });
   }
 
   create() {
@@ -51,29 +51,29 @@ export default class GameScene extends Phaser.Scene {
     // Create animations for the player.
     this.anims.create({
       key: 'idle',
-      frames: [{ key: 'idle', frame: 0 }],
-      frameRate: 1,
+      frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 3 }),
+      frameRate: 5,
       repeat: -1
     });
 
     this.anims.create({
       key: 'walk',
-      frames: [{ key: 'walk', frame: 0 }],
-      frameRate: 1,
+      frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 7 }),
+      frameRate: 12,
       repeat: -1
     });
 
     this.anims.create({
       key: 'sprint',
-      frames: [{ key: 'sprint', frame: 0 }],
-      frameRate: 1,
+      frames: this.anims.generateFrameNumbers('sprint', { start: 0, end: 7 }),
+      frameRate: 12,
       repeat: -1
     });
 
     this.anims.create({
       key: 'jump',
-      frames: [{ key: 'jump', frame: 0 }],
-      frameRate: 1,
+      frames: this.anims.generateFrameNumbers('jump', { start: 0, end: 1 }),
+      frameRate: 5,
       repeat: -1
     });
 

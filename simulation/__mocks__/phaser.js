@@ -48,6 +48,7 @@ const mockSceneSystems = {
       createCursorKeys: jest.fn(() => ({})),
       addKey: jest.fn(),
       addKeys: jest.fn(),
+      on: jest.fn(),
     },
   },
   time: {

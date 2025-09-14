@@ -1,3 +1,10 @@
-<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" fill="red" />
+<svg width="256" height="32" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" width="32" height="32" fill="#FF0000" />
+  <rect x="32" width="32" height="32" fill="#FF1111" />
+  <rect x="64" width="32" height="32" fill="#FF2222" />
+  <rect x="96" width="32" height="32" fill="#FF3333" />
+  <rect x="128" width="32" height="32" fill="#FF4444" />
+  <rect x="160" width="32" height="32" fill="#FF5555" />
+  <rect x="192" width="32" height="32" fill="#FF6666" />
+  <rect x="224" width="32" height="32" fill="#FF7777" />
 </svg>
