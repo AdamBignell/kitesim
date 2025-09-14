@@ -1,22 +1,26 @@
 import * as Phaser from 'phaser';
-import LevelGenerator from './LevelGenerator'; // Add this at the top
+import LevelGenerator from './LevelGenerator';
+import playerPhysicsProfile from './PlayerPhysicsProfile';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
-    // The key 'default' is used to identify this scene.
     super('default');
   }
 
   preload() {
-    // Load the sprite sheets for the player character.
+    // Player sprites
     this.load.spritesheet('idle', 'assets/sprites/idle.svg', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('walk', 'assets/sprites/walk.svg', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('sprint', 'assets/sprites/sprint.svg', { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('jump', 'assets/sprites/jump.svg', { frameWidth: 32, frameHeight: 32 });
+
+    // Level assets
+    this.load.image('dungeon_tiles', 'assets/tiles/dungeon_tiles.png'); // Placeholder tileset
+    this.load.image('platform_oneway', 'assets/sprites/platform_oneway.png'); // Placeholder one-way platform
   }
 
   create() {
-    // In create()
+    // Physics constants
     this.WALK_SPEED = 200;
     this.SPRINT_SPEED = 350;
     this.BASE_JUMP_FORCE = -650;
@@ -25,31 +29,21 @@ export default class GameScene extends Phaser.Scene {
     this.WALL_JUMP_FORCE_Y = -550;
     this.WALL_JUMP_FORCE_X = 350;
 
-    // In create(), near this.isAIControlled
+    // AI State
     this.isAISprinting = false;
-    // At the top of the create() method
-    this.isAIControlled = true; // Start in AI mode by default
-    this.aiAction = 'idle';     // Stores the AI's current horizontal movement
-    this.lastDirection = 'right'; // 'left' or 'right'
+    this.isAIControlled = true;
+    this.aiAction = 'idle';
+    this.lastDirection = 'right';
 
-    // This method is called once when the scene is created.
-    // Set the background color to white.
     this.cameras.main.setBackgroundColor('#ffffff');
-    // In the create() method: this.levelGenerator = new LevelGenerator(this);
-    this.levelGenerator = new LevelGenerator(this);
 
-    // Create a static group for platforms.
-    this.platforms = this.physics.add.staticGroup();
-
-    this.redrawLevel(this.scale.gameSize);
-
-    // Create the player sprite.
+    // Create the player sprite BEFORE the level so it's available
     this.player = this.physics.add.sprite(100, 450, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
 
-    // Add a collider between the player and the platforms.
-    this.physics.add.collider(this.player, this.platforms);
+    // Create the level
+    this.redrawLevel(this.scale.gameSize);
 
     // Create animations for the player.
     this.anims.create({
@@ -261,17 +255,87 @@ export default class GameScene extends Phaser.Scene {
       }
     }
   }
-  // In GameScene.js, replace the contents of redrawLevel with this:
   redrawLevel(gameSize) {
-    const width = gameSize.width;
-    const height = gameSize.height;
-    // Update the world bounds
-    this.physics.world.setBounds(0, 0, width, height);
+    const TILE_SIZE = 16;
 
-    // Clear any previous platforms
-    this.platforms.clear(true, true);
+    // Clean up previous level elements
+    if (this.groundGroup) this.groundGroup.clear(true, true);
+    if (this.oneWayPlatforms) this.oneWayPlatforms.clear(true, true);
+    if (this.endGoal) this.endGoal.destroy();
 
-    // Generate a new, traversable level with 20 platforms
-    this.levelGenerator.generate(this.platforms, 20);
+    // --- NOTE: Asset-Free Rendering ---
+    // The following implementation uses asset-free colored rectangles to render the
+    // level. This is a workaround because the required image assets for a tilemap
+    // (e.g., 'dungeon_tiles.png') were not found in the repository. This approach
+    // allows for verification of the level generation logic without visual assets.
+    // A production implementation should switch this to use this.make.tilemap()
+    // and properly loaded spritesheets as originally intended in the design document.
+
+    // --- 1. Define generator configuration ---
+    const generatorConfig = {
+      scene: this,
+      width: Math.floor(gameSize.width / TILE_SIZE),
+      height: Math.floor(gameSize.height / TILE_SIZE),
+      tileSize: TILE_SIZE,
+      playerPhysicsProfile: playerPhysicsProfile,
+    };
+
+    // --- 2. Generate the level data ---
+    if (!this.levelGenerator) {
+      this.levelGenerator = new LevelGenerator(generatorConfig);
+    }
+    const levelData = this.levelGenerator.generate();
+
+    // --- 3. Build the level from LevelData using Rectangles (asset-free) ---
+    this.groundGroup = this.physics.add.staticGroup();
+    for (let y = 0; y < levelData.height; y++) {
+        for (let x = 0; x < levelData.width; x++) {
+            if (levelData.grid[y][x].type === 'WALL') {
+                const wall = this.add.rectangle(
+                    x * TILE_SIZE + TILE_SIZE / 2,
+                    y * TILE_SIZE + TILE_SIZE / 2,
+                    TILE_SIZE, TILE_SIZE, 0x000000); // Black for walls
+                this.groundGroup.add(wall);
+            }
+        }
+    }
+
+    // --- 4. Create special objects ---
+    this.oneWayPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
+    levelData.specialObjects.forEach(obj => {
+      if (obj.type === 'ONE_WAY_PLATFORM') {
+        const platform = this.add.rectangle(obj.x, obj.y, TILE_SIZE * 5, TILE_SIZE, 0x00ff00); // Green for one-way
+        this.oneWayPlatforms.add(platform);
+        platform.body.checkCollision.down = false;
+        platform.body.checkCollision.left = false;
+        platform.body.checkCollision.right = false;
+      }
+    });
+
+    // --- 5. Setup Player and World ---
+    this.player.setPosition(levelData.startPosition.x, levelData.startPosition.y);
+    this.physics.world.setBounds(0, 0, gameSize.width, gameSize.height);
+    this.cameras.main.setBounds(0, 0, gameSize.width, gameSize.height);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+
+    // Add a visual marker for the end goal
+    this.endGoal = this.add.rectangle(levelData.endPosition.x, levelData.endPosition.y, TILE_SIZE * 2, TILE_SIZE * 2, 0xff0000);
+    this.physics.add.existing(this.endGoal, true); // Add physics so we can overlap with it
+
+    // --- 6. Setup Physics Colliders ---
+    if (this.groundCollider) this.groundCollider.destroy();
+    this.groundCollider = this.physics.add.collider(this.player, this.groundGroup);
+
+    // Simplified one-way platform collision. The checkCollision flags on the body
+    // are sufficient, making a custom processCallback redundant.
+    if (this.oneWayCollider) this.oneWayCollider.destroy();
+    this.oneWayCollider = this.physics.add.collider(this.player, this.oneWayPlatforms);
+
+    // Add a collider for the end goal
+    if (this.goalCollider) this.goalCollider.destroy();
+    this.goalCollider = this.physics.add.overlap(this.player, this.endGoal, () => {
+      this.add.text(this.endGoal.x, this.endGoal.y - 50, 'Goal Reached!', { color: '#000' }).setOrigin(0.5);
+      this.physics.pause();
+    }, null, this);
   }
 }

@@ -7,10 +7,18 @@ const mockSceneSystems = {
       generateTexture: jest.fn().mockReturnThis(),
       destroy: jest.fn(),
     })),
-    rectangle: jest.fn(),
+    rectangle: jest.fn(() => ({
+        destroy: jest.fn(),
+    })),
+    text: jest.fn(() => ({
+        setOrigin: jest.fn(),
+    })),
   },
   physics: {
+    pause: jest.fn(),
     add: {
+      existing: jest.fn(),
+      overlap: jest.fn(),
       staticGroup: jest.fn(() => ({
         add: jest.fn(),
         clear: jest.fn(),
@@ -21,10 +29,24 @@ const mockSceneSystems = {
         })),
         refresh: jest.fn(),
       })),
+      group: jest.fn(() => ({
+        add: jest.fn(),
+        clear: jest.fn(),
+        create: jest.fn(() => ({
+          setSize: jest.fn().mockReturnThis(),
+          setVisible: jest.fn().mockReturnThis(),
+          refreshBody: jest.fn().mockReturnThis(),
+          body: {
+            checkCollision: {}
+          }
+        })),
+        refresh: jest.fn(),
+      })),
       sprite: jest.fn(() => ({
         setCircle: jest.fn(),
         setBounce: jest.fn(),
         setCollideWorldBounds: jest.fn(),
+        setPosition: jest.fn(),
       })),
       collider: jest.fn(),
     },
@@ -35,6 +57,8 @@ const mockSceneSystems = {
   cameras: {
     main: {
       setBackgroundColor: jest.fn(),
+      setBounds: jest.fn(),
+      startFollow: jest.fn(),
     },
   },
   scale: {
