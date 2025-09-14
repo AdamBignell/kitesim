@@ -131,30 +131,30 @@ export default class LevelGenerator {
 
   _drawSolidChunk(platforms, x, y, w, h) {
     // A solid, impassable chunk
-    platforms.create(x + w / 2, y + h / 2, null).setSize(w, h).setVisible(false).refreshBody();
+    platforms.create(x + w / 2, y + h / 2, 'platform').setSize(w, h).refreshBody();
   }
 
   _drawFloorChunk(platforms, x, y, w, h) {
-    platforms.create(x + w / 2, y + h - 10, null).setSize(w, 20).setVisible(false).refreshBody();
+    platforms.create(x + w / 2, y + h - 10, 'platform').setSize(w, 20).refreshBody();
   }
 
   _drawVerticalShaft(platforms, x, y, w, h) {
-    platforms.create(x + 10, y + h / 2, null).setSize(20, h).setVisible(false).refreshBody();
-    platforms.create(x + w - 10, y + h / 2, null).setSize(20, h).setVisible(false).refreshBody();
+    platforms.create(x + 10, y + h / 2, 'platform').setSize(20, h).refreshBody();
+    platforms.create(x + w - 10, y + h / 2, 'platform').setSize(20, h).refreshBody();
   }
 
   _drawLBendBottomRight(platforms, x, y, w, h) {
-    platforms.create(x + w / 2, y + h - 10, null).setSize(w, 20).setVisible(false).refreshBody();
-    platforms.create(x + 10, y + h / 2, null).setSize(20, h).setVisible(false).refreshBody();
+    platforms.create(x + w / 2, y + h - 10, 'platform').setSize(w, 20).refreshBody();
+    platforms.create(x + 10, y + h / 2, 'platform').setSize(20, h).refreshBody();
   }
 
   _drawTJunctionDown(platforms, x, y, w, h) {
-    platforms.create(x + w / 2, y + 10, null).setSize(w, 20).setVisible(false).refreshBody();
-    platforms.create(x + w / 2, y + h / 2, null).setSize(20, h).setVisible(false).refreshBody();
+    platforms.create(x + w / 2, y + 10, 'platform').setSize(w, 20).refreshBody();
+    platforms.create(x + w / 2, y + h / 2, 'platform').setSize(20, h).refreshBody();
   }
 
   _drawCrossRoom(platforms, x, y, w, h) {
-    platforms.create(x + w / 2, y + h / 2, null).setSize(w * 0.4, 20).setVisible(false).refreshBody();
-    platforms.create(x + w / 2, y + h / 2, null).setSize(20, h * 0.4).setVisible(false).refreshBody();
+    platforms.create(x + w / 2, y + h / 2, 'platform').setSize(w * 0.4, 20).refreshBody();
+    platforms.create(x + w / 2, y + h / 2, 'platform').setSize(20, h * 0.4).refreshBody();
   }
 }

@@ -63,21 +63,21 @@ describe('LevelGenerator', () => {
 
     it('_drawSolidChunk should create a large, single platform', () => {
       levelGenerator._drawSolidChunk(platforms, x, y, w, h);
-      expect(platforms.create).toHaveBeenCalledWith(x + w / 2, y + h / 2, null);
+      expect(platforms.create).toHaveBeenCalledWith(x + w / 2, y + h / 2, 'platform');
       const mockPlatform = platforms.create.mock.results[0].value;
       expect(mockPlatform.setSize).toHaveBeenCalledWith(w, h);
     });
 
     it('_drawFloorChunk should create a platform at the bottom', () => {
       levelGenerator._drawFloorChunk(platforms, x, y, w, h);
-      expect(platforms.create).toHaveBeenCalledWith(x + w / 2, y + h - 10, null);
+      expect(platforms.create).toHaveBeenCalledWith(x + w / 2, y + h - 10, 'platform');
     });
 
     it('_drawVerticalShaft should create two vertical walls', () => {
       levelGenerator._drawVerticalShaft(platforms, x, y, w, h);
       expect(platforms.create).toHaveBeenCalledTimes(2);
-      expect(platforms.create).toHaveBeenCalledWith(x + 10, y + h / 2, null);
-      expect(platforms.create).toHaveBeenCalledWith(x + w - 10, y + h / 2, null);
+      expect(platforms.create).toHaveBeenCalledWith(x + 10, y + h / 2, 'platform');
+      expect(platforms.create).toHaveBeenCalledWith(x + w - 10, y + h / 2, 'platform');
     });
   });
 });

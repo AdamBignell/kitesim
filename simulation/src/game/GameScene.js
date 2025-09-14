@@ -16,6 +16,13 @@ export default class GameScene extends Phaser.Scene {
     graphics.fillCircle(16, 16, 16);
     graphics.generateTexture('player', 32, 32);
     graphics.destroy();
+
+    // Create a texture for the platforms.
+    const platformGraphics = this.add.graphics();
+    platformGraphics.fillStyle(0x808080, 1); // Grey color
+    platformGraphics.fillRect(0, 0, 1, 1); // A 1x1 pixel texture
+    platformGraphics.generateTexture('platform', 1, 1);
+    platformGraphics.destroy();
   }
 
   create() {
