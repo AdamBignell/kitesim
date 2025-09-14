@@ -1,3 +1,6 @@
-<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" fill="blue" />
+<svg width="128" height="32" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" width="32" height="32" fill="#0000FF" />
+  <rect x="32" width="32" height="32" fill="#3333FF" />
+  <rect x="64" width="32" height="32" fill="#6666FF" />
+  <rect x="96" width="32" height="32" fill="#3333FF" />
 </svg>
