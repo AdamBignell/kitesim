@@ -52,6 +52,10 @@ const mockSceneSystems = {
   },
   time: {
     addEvent: jest.fn(),
+  },
+  anims: {
+    create: jest.fn(),
+    generateFrameNumbers: jest.fn(),
   }
 };
 
