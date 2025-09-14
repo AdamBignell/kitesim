@@ -80,5 +80,8 @@ module.exports = {
   Math: {
     Between: jest.fn((min) => min),
     Clamp: jest.fn((value, min, max) => Math.max(min, Math.min(value, max))),
+    RND: {
+      pick: jest.fn(arr => arr[0]),
+    },
   },
 };
