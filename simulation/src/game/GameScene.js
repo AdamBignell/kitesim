@@ -26,23 +26,11 @@ export default class GameScene extends Phaser.Scene {
     // Set the background color to white.
     this.cameras.main.setBackgroundColor('#ffffff');
 
-    // Create a static group for platforms.
-    const platforms = this.physics.add.staticGroup();
+    // Create a static group for platforms and store it as a class property.
+    this.platforms = this.physics.add.staticGroup();
 
-    // Create the ground and two platforms.
-    // We create them as black rectangles and then add them to the static physics group.
-    const ground = this.add.rectangle(400, 584, 800, 32, 0x000000);
-    platforms.add(ground);
-
-    const platform1 = this.add.rectangle(600, 450, 200, 32, 0x000000);
-    platforms.add(platform1);
-
-    const platform2 = this.add.rectangle(200, 350, 200, 32, 0x000000);
-    platforms.add(platform2);
-
-    // After adding Game Objects to a static group, we must refresh the group.
-    // This creates the physics bodies for the objects, making them solid.
-    platforms.refresh();
+    // Create the initial platforms.
+    this.createPlatforms();
 
     // Create the player sprite.
     this.player = this.physics.add.sprite(100, 450, 'player');
@@ -52,7 +40,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
 
     // Add a collider between the player and the platforms.
-    this.physics.add.collider(this.player, platforms);
+    this.physics.add.collider(this.player, this.platforms);
 
     this.jumps = 0;
     this.maxJumps = 2;
@@ -66,6 +54,9 @@ export default class GameScene extends Phaser.Scene {
       space: 'SPACE'
     });
 
+    // Handle window resizing
+    this.scale.on('resize', this.recreateLevel, this);
+
     // In the create() method
     this.time.addEvent({
       delay: 2000, // AI makes a new decision every 2 seconds
@@ -73,6 +64,31 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+  }
+
+  createPlatforms() {
+    const { width, height } = this.scale;
+
+    // Create the ground. Its y is its center, so height - 16 places it at the bottom.
+    const ground = this.add.rectangle(width / 2, height - 16, width, 32, 0x000000);
+    this.platforms.add(ground);
+
+    // Create a couple of platforms at relative positions.
+    const platform1 = this.add.rectangle(width * 0.6, height * 0.7, width * 0.25, 32, 0x000000);
+    this.platforms.add(platform1);
+
+    const platform2 = this.add.rectangle(width * 0.25, height * 0.5, width * 0.25, 32, 0x000000);
+    this.platforms.add(platform2);
+
+    // Refresh the group to apply physics to the new platforms.
+    this.platforms.refresh();
+  }
+
+  recreateLevel(gameSize) {
+    // Destroy all existing platforms in the static group.
+    this.platforms.clear(true, true);
+    // Redraw platforms using the new dimensions.
+    this.createPlatforms();
   }
 
   togglePlayerControl() {
@@ -88,8 +104,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // 1. Check for falling off the screen
-    if (this.player.y > this.game.config.height) {
+    // 1. Check for falling off the screen. Use this.scale.height for dynamic height.
+    if (this.player.y > this.scale.height) {
       this.player.setVelocity(0, 0); // Stop its movement
       this.player.setPosition(100, 450); // Reset to the start position
       return; // Skip the rest of the update loop for this frame
