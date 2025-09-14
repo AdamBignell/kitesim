@@ -42,7 +42,7 @@ const PhaserGame = () => {
     if (gameRef.current) {
       const scene = gameRef.current.scene.getScene('default'); // 'default' is the key for the first scene
       if (scene && scene.togglePlayerControl) {
-        const newControlState = scene.togglePlayerControl();
+        const newControlState = scene.togglePlayerControl(true); // Pass true for UI call
         setIsPlayerControlled(newControlState);
       }
     }
