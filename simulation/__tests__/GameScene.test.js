@@ -28,7 +28,7 @@ describe('GameScene', () => {
     scene.create();
     expect(scene.physics.add.staticGroup).toHaveBeenCalled();
     // The player is created at (100, 450) in GameScene.js
-    expect(scene.physics.add.sprite).toHaveBeenCalledWith(100, 450, 'player');
+    expect(scene.physics.add.sprite).toHaveBeenCalledWith(100, 450, 'idle');
   });
 
   it('should have a togglePlayerControl method', () => {

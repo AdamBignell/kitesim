@@ -8,14 +8,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Create a texture for the player character.
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x0000ff, 1);
-    // The circle is drawn at (16, 16) with a radius of 16,
-    // so the texture will be 32x32.
-    graphics.fillCircle(16, 16, 16);
-    graphics.generateTexture('player', 32, 32);
-    graphics.destroy();
+    // Load the sprite sheets for the player character.
+    this.load.svg('idle', 'assets/sprites/idle.svg', { width: 32, height: 32 });
+    this.load.svg('walk', 'assets/sprites/walk.svg', { width: 32, height: 32 });
+    this.load.svg('sprint', 'assets/sprites/sprint.svg', { width: 32, height: 32 });
+    this.load.svg('jump', 'assets/sprites/jump.svg', { width: 32, height: 32 });
   }
 
   create() {
@@ -43,14 +40,41 @@ export default class GameScene extends Phaser.Scene {
     this.redrawLevel(this.scale.gameSize);
 
     // Create the player sprite.
-    this.player = this.physics.add.sprite(100, 450, 'player');
-    // Set the physics body to a circle to match the visual representation.
-    this.player.setCircle(16);
+    this.player = this.physics.add.sprite(100, 450, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
 
     // Add a collider between the player and the platforms.
     this.physics.add.collider(this.player, this.platforms);
+
+    // Create animations for the player.
+    this.anims.create({
+      key: 'idle',
+      frames: [{ key: 'idle', frame: 0 }],
+      frameRate: 1,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'walk',
+      frames: [{ key: 'walk', frame: 0 }],
+      frameRate: 1,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'sprint',
+      frames: [{ key: 'sprint', frame: 0 }],
+      frameRate: 1,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'jump',
+      frames: [{ key: 'jump', frame: 0 }],
+      frameRate: 1,
+      repeat: -1
+    });
 
     this.jumps = 0;
     this.maxJumps = 2;
@@ -135,6 +159,16 @@ export default class GameScene extends Phaser.Scene {
         const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
       }
+    }
+
+    // Animation logic
+    if (!this.player.body.touching.down) {
+      this.player.anims.play('jump', true);
+    } else if (this.player.body.velocity.x !== 0) {
+      const isSprinting = this.isAIControlled ? this.isAISprinting : this.keyShift.isDown;
+      this.player.anims.play(isSprinting ? 'sprint' : 'walk', true);
+    } else {
+      this.player.anims.play('idle', true);
     }
   }
 
