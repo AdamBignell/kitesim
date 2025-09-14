@@ -54,6 +54,9 @@ export default class GameScene extends Phaser.Scene {
     // Add a collider between the player and the platforms.
     this.physics.add.collider(this.player, platforms);
 
+    this.jumps = 0;
+    this.maxJumps = 2;
+
     // Set up keyboard input.
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys({
@@ -84,40 +87,50 @@ export default class GameScene extends Phaser.Scene {
     return !this.isAIControlled;
   }
 
-// Replace your entire existing update() method with this
-update() {
-  // 1. Check for falling off the screen
-  if (this.player.y > this.game.config.height) {
-    this.player.setVelocity(0, 0);       // Stop its movement
-    this.player.setPosition(100, 450);   // Reset to the start position
-    return; // Skip the rest of the update loop for this frame
-  }
-
-  // 2. Check which control mode is active
-  if (this.isAIControlled) {
-    // --- AI Control Logic ---
-    if (this.aiAction === 'left') {
-      this.player.setVelocityX(-200);
-    } else if (this.aiAction === 'right') {
-      this.player.setVelocityX(200);
-    } else { // 'idle'
-      this.player.setVelocityX(0);
+  update() {
+    // 1. Check for falling off the screen
+    if (this.player.y > this.game.config.height) {
+      this.player.setVelocity(0, 0); // Stop its movement
+      this.player.setPosition(100, 450); // Reset to the start position
+      return; // Skip the rest of the update loop for this frame
     }
-  } else {
-    // --- Player Control Logic ---
-    if (this.cursors.left.isDown || this.keys.left.isDown) {
-      this.player.setVelocityX(-200);
-    } else if (this.cursors.right.isDown || this.keys.right.isDown) {
-      this.player.setVelocityX(200);
+
+    // Reset jumps if touching the ground
+    if (this.player.body.touching.down) {
+      this.jumps = 0;
+    }
+
+    // Check for jump input
+    const isJumpKeyDown = Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.space);
+
+    // 2. Check which control mode is active
+    if (this.isAIControlled) {
+      // --- AI Control Logic ---
+      if (this.aiAction === 'left') {
+        this.player.setVelocityX(-200);
+      } else if (this.aiAction === 'right') {
+        this.player.setVelocityX(200);
+      } else { // 'idle'
+        this.player.setVelocityX(0);
+      }
     } else {
-      this.player.setVelocityX(0);
-    }
+      // --- Player Control Logic ---
+      if (this.cursors.left.isDown || this.keys.left.isDown) {
+        this.player.setVelocityX(-200);
+      } else if (this.cursors.right.isDown || this.keys.right.isDown) {
+        this.player.setVelocityX(200);
+      } else {
+        this.player.setVelocityX(0);
+      }
 
-    if ((this.cursors.up.isDown || this.keys.up.isDown || this.keys.space.isDown) && this.player.body.touching.down) {
-      this.player.setVelocityY(-550);
+      if (isJumpKeyDown && this.jumps < this.maxJumps) {
+        this.jumps++;
+        this.player.setVelocityY(-550);
+      }
     }
   }
-}
 
   // Add this new method to the GameScene class, outside of create() or update()
   updateAIAction() {
@@ -132,12 +145,9 @@ update() {
     }
 
     // Separately, decide if the AI should try to jump
-    // It should only be able to jump if it's on the ground.
-    if (this.player.body.touching.down) {
-      // Give it a 30% chance to jump when it makes a new decision
-      if (Math.random() < 0.3) {
-        this.player.setVelocityY(-550); // Same jump force as the player
-      }
+    if (Math.random() < 0.3 && this.jumps < this.maxJumps) {
+      this.jumps++;
+      this.player.setVelocityY(-550); // Same jump force as the player
     }
   }
 }
