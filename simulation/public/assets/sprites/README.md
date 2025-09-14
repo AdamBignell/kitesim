@@ -2,71 +2,110 @@
 
 This directory contains the sprite sheet images for the game. Follow these instructions to add your own custom sprites.
 
-## 1. File Format
+## 1. Sprite Sheet Specifications
 
-For sprite sheets with multiple frames of animation, it is recommended to use the **PNG** format with a transparent background. Each frame of the animation should be laid out in a grid on a single PNG file.
+Before you start creating, it's important to have a consistent set of standards for your sprite sheets. This will make the process of adding them to the game much smoother.
 
-The current placeholder sprites are single-frame SVG files. You should replace these with your own multi-frame PNG sprite sheets.
+### Frame Dimensions
 
-## 2. Adding a New Sprite Sheet
+For human characters, especially those who will be holding weapons, we recommend a frame size of **64x64 pixels**. This provides enough space for character details and held items, like swords or wands, without being excessively large.
+
+*   **Standard Character:** 64x64 pixels
+*   **Larger Characters/Bosses:** You might consider 128x128 pixels.
+
+**Important:** Every frame in your sprite sheet must have the exact same dimensions.
+
+### Sprite Sheet Layout
+
+Your sprite sheet should be a single **PNG** file with a transparent background. The frames of your animation should be laid out in a grid, starting from the top-left corner. The game will read the frames from left to right, and then top to bottom.
+
+For example, an 8-frame animation on a sheet with 4 frames per row would look like this:
+
+```
+[Frame 0] [Frame 1] [Frame 2] [Frame 3]
+[Frame 4] [Frame 5] [Frame 6] [Frame 7]
+```
+
+### Animation Cycle Recommendations
+
+Here are some guidelines for creating smooth and believable animations for common character actions.
+
+#### Idle Animation (4 frames)
+
+The idle animation is what plays when the character is standing still. It should be a subtle loop that makes the character feel alive.
+
+*   **Frame Count:** 4 frames is usually sufficient.
+*   **What it should look like:** A gentle up-and-down breathing motion, a slight bounce, or the character shifting their weight.
+
+#### Walking Animation (8 frames)
+
+A good walking animation is key to a believable character.
+
+*   **Frame Count:** 8 frames provides a very smooth and natural-looking walk cycle.
+*   **What it should look like:** An 8-frame walk cycle typically captures the key poses of a step: contact, down (recoil), passing, and up (high point). With 8 frames, you can create a full cycle for one leg, then mirror it or create a separate one for the other leg, resulting in a complete two-step animation.
+
+#### Running / Sprinting Animation (6-8 frames)
+
+A running animation should be more dynamic and energetic than a walk.
+
+*   **Frame Count:** 6 to 8 frames. A slightly lower frame count (like 6) can sometimes feel faster and more frantic.
+*   **What it should look like:** Exaggerated arm and leg movements. The character should lean forward more, and there should be a clear "airborne" pose where both feet are off the ground.
+
+## 2. How to Add a New Sprite Sheet to the Game
 
 To add a new sprite sheet and its corresponding animation to the game, you need to modify the `simulation/src/game/GameScene.js` file.
 
 ### Step 1: Place the Sprite Sheet File
 
-Place your new sprite sheet file (e.g., `player_attack.png`) into this directory (`simulation/public/assets/sprites`).
+Place your new sprite sheet file (e.g., `player_walk.png`) into this directory (`simulation/public/assets/sprites`).
 
 ### Step 2: Load the Sprite Sheet in `preload()`
 
-In the `preload()` function in `GameScene.js`, use `this.load.spritesheet()` to load your new image. You'll need to specify the `frameWidth` and `frameHeight` of a single frame in your sprite sheet.
+In the `preload()` function in `GameScene.js`, use `this.load.spritesheet()` to load your new image. You'll need to specify the `frameWidth` and `frameHeight` that you decided on earlier (e.g., 64x64).
 
-For example, to replace the placeholder `walk` sprite, you would change this:
+For example, to replace the placeholder `walk` sprite:
 
 ```javascript
-// Before (loading an SVG)
+// In preload()
+
+// This...
 this.load.svg('walk', 'assets/sprites/walk.svg', { width: 32, height: 32 });
-```
 
-To this (loading a PNG sprite sheet):
-
-```javascript
-// After (loading a PNG sprite sheet)
-this.load.spritesheet('walk', 'assets/sprites/walk.png', { frameWidth: 32, frameHeight: 32 });
+// ...becomes this:
+this.load.spritesheet('walk', 'assets/sprites/walk.png', { frameWidth: 64, frameHeight: 64 });
 ```
 
 If you are adding a completely new animation (e.g., an attack), just add a new line:
 
 ```javascript
-this.load.spritesheet('attack', 'assets/sprites/attack.png', { frameWidth: 48, frameHeight: 48 });
+this.load.spritesheet('attack', 'assets/sprites/attack.png', { frameWidth: 64, frameHeight: 64 });
 ```
 
 ### Step 3: Create the Animation in `create()`
 
-In the `create()` function, find the `this.anims.create()` blocks. This is where you define how the frames from your sprite sheet are turned into an animation.
+In the `create()` function, find the `this.anims.create()` blocks. This is where you define how the frames from your sprite sheet are turned into a playable animation.
 
 To update an existing animation, like `walk`, you'll need to tell it which frames to use from your new sprite sheet. The `frames` property uses `this.anims.generateFrameNumbers()` to specify a range of frames.
 
-For example, to update the `walk` animation to use the first 8 frames of the `walk` sprite sheet, you would change this:
+For our 8-frame walking animation, the change would look like this:
 
 ```javascript
-// Before (single frame animation)
+// In create()
+
+// This...
 this.anims.create({
   key: 'walk',
   frames: [{ key: 'walk', frame: 0 }],
   frameRate: 1,
   repeat: -1
 });
-```
 
-To this (multi-frame animation):
-
-```javascript
-// After (multi-frame animation)
+// ...becomes this:
 this.anims.create({
   key: 'walk',
-  frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 7 }),
-  frameRate: 10, // Adjust frameRate to control animation speed
-  repeat: -1 // -1 means loop forever
+  frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 7 }), // Use frames 0 through 7
+  frameRate: 10, // Adjust this to control animation speed
+  repeat: -1     // -1 means loop forever
 });
 ```
 
