@@ -2,8 +2,8 @@ import * as Phaser from 'phaser';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
-    // The key 'GameScene' is used to identify this scene.
-    super('GameScene');
+    // The key 'default' is used to identify this scene.
+    super('default');
   }
 
   preload() {
@@ -56,6 +56,12 @@ export default class GameScene extends Phaser.Scene {
 
     // Set up keyboard input.
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys({
+      up: 'W',
+      left: 'A',
+      right: 'D',
+      space: 'SPACE'
+    });
 
     // In the create() method
     this.time.addEvent({
@@ -64,19 +70,18 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+  }
 
-    this.input.keyboard.on('keydown', (event) => {
-      // Check if the key is 'P' and if the Ctrl key is held down
-      if (event.key === 'p' && event.ctrlKey) {
-        this.isAIControlled = !this.isAIControlled; // Flip the control state
-        console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
+  togglePlayerControl() {
+    this.isAIControlled = !this.isAIControlled;
+    console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
 
-        // If we switch back to player control, reset the player's velocity
-        if (!this.isAIControlled) {
-          this.player.setVelocityX(0);
-        }
-      }
-    });
+    // If we switch to player control, reset the player's velocity
+    if (!this.isAIControlled) {
+      this.player.setVelocityX(0);
+    }
+    // Return the new state of player control
+    return !this.isAIControlled;
   }
 
 // Replace your entire existing update() method with this
@@ -100,15 +105,15 @@ update() {
     }
   } else {
     // --- Player Control Logic ---
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.keys.left.isDown) {
       this.player.setVelocityX(-200);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.keys.right.isDown) {
       this.player.setVelocityX(200);
     } else {
       this.player.setVelocityX(0);
     }
 
-    if (this.cursors.up.isDown && this.player.body.touching.down) {
+    if ((this.cursors.up.isDown || this.keys.up.isDown || this.keys.space.isDown) && this.player.body.touching.down) {
       this.player.setVelocityY(-550);
     }
   }

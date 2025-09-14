@@ -5,6 +5,10 @@ const phaserConfig = {
   type: Phaser.AUTO, // Automatically choose between WebGL or Canvas
   width: 1280,
   height: 720,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
   // The 'parent' property will be set dynamically in our React component.
   // We'll leave it out here.
   physics: {

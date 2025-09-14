@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Simulation Features & Controls
+
+This simulation features a character that is by default controlled by a simple AI.
+
+### Player Control
+
+You can take control of the character by clicking the **Possess** button in the top-right corner of the simulation. To return control to the AI, click the **Release Control** button.
+
+### Controls
+
+When you have control of the character, you can use the following inputs:
+
+-   **Move Left:** A or Left Arrow
+-   **Move Right:** D or Right Arrow
+-   **Jump:** W, Up Arrow, or Space Bar
