@@ -118,8 +118,8 @@ export default class GameScene extends Phaser.Scene {
       return; // Skip the rest of the update loop for this frame
     }
 
-    // Reset jumps if touching the ground
-    if (this.player.body.touching.down) {
+    // Reset jumps if touching the ground or the world bounds
+    if (this.player.body.touching.down || this.player.body.blocked.down) {
       this.jumps = 0;
     }
 
@@ -155,7 +155,8 @@ export default class GameScene extends Phaser.Scene {
       }
 
       // Jumping
-      if (this.cursors.up.isDown && this.player.body.touching.down) {
+      if (isJumpKeyDown && this.jumps < this.maxJumps) {
+        this.jumps++;
         const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
       }
@@ -188,11 +189,12 @@ export default class GameScene extends Phaser.Scene {
     // 2. Decide sprint state (40% chance to sprint)
     this.isAISprinting = Math.random() < 0.4;
 
-    // 3. Decide to jump (only if on ground)
-    if (this.player.body.touching.down) {
-      // 30% chance to attempt a jump
-      if (Math.random() < 0.3) {
-        // Use the correct jump force based on sprint state
+    // 3. Decide to jump
+    // 30% chance to attempt a jump
+    if (Math.random() < 0.3) {
+      if (this.jumps < this.maxJumps) {
+        // AI can jump if it has jumps left
+        this.jumps++;
         const jumpForce = this.isAISprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
       }
