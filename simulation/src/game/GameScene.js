@@ -103,7 +103,7 @@ export default class GameScene extends Phaser.Scene {
     if (!isUICall) {
       // If the call is not from the UI, check if AI is already active.
       // If AI is active, do nothing. This prevents accidental toggling from keyboard events.
-      if (this.isAIControlled) {
+      if (this.isAIControlled || this.keyShift.isDown) {
         return !this.isAIControlled;
       }
     }
@@ -172,11 +172,6 @@ export default class GameScene extends Phaser.Scene {
         const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
 
-        // If not moving horizontally, apply a small boost in the last direction
-        if (this.player.body.velocity.x === 0) {
-          const boost = this.lastDirection === 'left' ? -50 : 50;
-          this.player.setVelocityX(this.player.body.velocity.x + boost);
-        }
       }
     }
 
