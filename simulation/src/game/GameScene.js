@@ -27,6 +27,7 @@ export default class GameScene extends Phaser.Scene {
     // At the top of the create() method
     this.isAIControlled = true; // Start in AI mode by default
     this.aiAction = 'idle';     // Stores the AI's current horizontal movement
+    this.lastDirection = 'right'; // 'left' or 'right'
 
     // This method is called once when the scene is created.
     // Set the background color to white.
@@ -98,7 +99,15 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  togglePlayerControl() {
+  togglePlayerControl(isUICall = false) {
+    if (!isUICall) {
+      // If the call is not from the UI, check if AI is already active.
+      // If AI is active, do nothing. This prevents accidental toggling from keyboard events.
+      if (this.isAIControlled) {
+        return !this.isAIControlled;
+      }
+    }
+
     this.isAIControlled = !this.isAIControlled;
     console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
 
@@ -146,11 +155,14 @@ export default class GameScene extends Phaser.Scene {
       const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
 
       // Horizontal Movement
-      if (this.cursors.left.isDown) {
+      if (this.cursors.left.isDown || this.keys.left.isDown) {
         this.player.setVelocityX(-targetSpeed);
-      } else if (this.cursors.right.isDown) {
+        this.lastDirection = 'left';
+      } else if (this.cursors.right.isDown || this.keys.right.isDown) {
         this.player.setVelocityX(targetSpeed);
-      } else {
+        this.lastDirection = 'right';
+      } else if (this.player.body.touching.down) {
+        // Only stop horizontal movement if on the ground
         this.player.setVelocityX(0);
       }
 
@@ -159,6 +171,12 @@ export default class GameScene extends Phaser.Scene {
         this.jumps++;
         const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
+
+        // If not moving horizontally, apply a small boost in the last direction
+        if (this.player.body.velocity.x === 0) {
+          const boost = this.lastDirection === 'left' ? -50 : 50;
+          this.player.setVelocityX(this.player.body.velocity.x + boost);
+        }
       }
     }
 
@@ -174,7 +192,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateAIAction() {
-    if (!this.isAIControlled) return; // Your bug fix line
+    if (!this.isAIControlled) return;
 
     // 1. Decide horizontal action
     const rand = Math.random();
