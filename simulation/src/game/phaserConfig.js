@@ -3,8 +3,8 @@ import GameScene from './GameScene';
 
 const phaserConfig = {
   type: Phaser.AUTO, // Automatically choose between WebGL or Canvas
-  width: 1280,
-  height: 720,
+  width: 800,  // Revert to a base width
+  height: 600, // Revert to a base height
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH

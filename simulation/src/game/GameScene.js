@@ -2,60 +2,51 @@ import * as Phaser from 'phaser';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
-    // The key 'default' is used to identify this scene.
-    super('default');
+    super('GameScene');
   }
 
   preload() {
-    // Create a texture for the player character.
+    // ... (Your existing preload logic for the player texture)
     const graphics = this.add.graphics();
     graphics.fillStyle(0x0000ff, 1);
-    // The circle is drawn at (16, 16) with a radius of 16,
-    // so the texture will be 32x32.
     graphics.fillCircle(16, 16, 16);
     graphics.generateTexture('player', 32, 32);
     graphics.destroy();
   }
 
   create() {
-    // At the top of the create() method
-    this.isAIControlled = true; // Start in AI mode by default
-    this.aiAction = 'idle';     // Stores the AI's current horizontal movement
-
-    // This method is called once when the scene is created.
-    // Set the background color to white.
+    // Set the background to white so we can see if the scene loads
     this.cameras.main.setBackgroundColor('#ffffff');
 
-    // Create a static group for platforms and store it as a class property.
+    // Create the platforms group once
     this.platforms = this.physics.add.staticGroup();
 
-    // Create the initial platforms.
-    this.createPlatforms();
-
-    // Create the player sprite.
-    this.player = this.physics.add.sprite(100, 450, 'player');
-    // Set the physics body to a circle to match the visual representation.
+    // Create the player sprite once
+    this.player = this.physics.add.sprite(100, 100, 'player');
     this.player.setCircle(16);
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
 
-    // Add a collider between the player and the platforms.
+    // Add the collider between the player and platforms once
     this.physics.add.collider(this.player, this.platforms);
+
+    // Create keyboard cursors
+    this.cursors = this.input.keyboard.createCursorKeys();
+
+    // At the top of the create() method
+    this.isAIControlled = true; // Start in AI mode by default
+    this.aiAction = 'idle';     // Stores the AI's current horizontal movement
 
     this.jumps = 0;
     this.maxJumps = 2;
 
     // Set up keyboard input.
-    this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys({
       up: 'W',
       left: 'A',
       right: 'D',
       space: 'SPACE'
     });
-
-    // Handle window resizing
-    this.scale.on('resize', this.recreateLevel, this);
 
     // In the create() method
     this.time.addEvent({
@@ -64,43 +55,47 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+
+    // --- Add Resize Listener ---
+    // Listen for the resize event
+    this.scale.on('resize', this.redrawLevel, this);
+
+    // --- Initial Level Draw ---
+    // Manually call redrawLevel once to draw the initial level
+    this.redrawLevel({ width: this.scale.width, height: this.scale.height });
+
+    // (Your existing AI logic and Ctrl+G listener can remain here)
   }
 
-  createPlatforms() {
-    const { width, height } = this.scale;
+  // --- New Centralized Drawing Method ---
+  redrawLevel(gameSize) {
+    const width = gameSize.width;
+    const height = gameSize.height;
 
-    // Create the ground. Its y is its center, so height - 16 places it at the bottom.
-    const ground = this.add.rectangle(width / 2, height - 16, width, 32, 0x000000);
-    this.platforms.add(ground);
+    // Update the world bounds to match the new screen size
+    this.physics.world.setBounds(0, 0, width, height);
 
-    // Create a couple of platforms at relative positions.
-    const platform1 = this.add.rectangle(width * 0.6, height * 0.7, width * 0.25, 32, 0x000000);
-    this.platforms.add(platform1);
-
-    const platform2 = this.add.rectangle(width * 0.25, height * 0.5, width * 0.25, 32, 0x000000);
-    this.platforms.add(platform2);
-
-    // Refresh the group to apply physics to the new platforms.
-    this.platforms.refresh();
-  }
-
-  recreateLevel(gameSize) {
-    // Destroy all existing platforms in the static group.
+    // Clear any previous platforms
     this.platforms.clear(true, true);
-    // Redraw platforms using the new dimensions.
-    this.createPlatforms();
-  }
 
-  togglePlayerControl() {
-    this.isAIControlled = !this.isAIControlled;
-    console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
+    // --- Redraw Platforms with Relative Coordinates ---
+    // Draw the floor
+    this.platforms.create(width / 2, height - 10, null)
+      .setSize(width, 20)
+      .setVisible(false) // Use physics debug to see it, or create a texture
+      .refreshBody();
 
-    // If we switch to player control, reset the player's velocity
-    if (!this.isAIControlled) {
-      this.player.setVelocityX(0);
-    }
-    // Return the new state of player control
-    return !this.isAIControlled;
+    // Draw a middle platform
+    this.platforms.create(width * 0.5, height * 0.7, null)
+      .setSize(width * 0.3, 20)
+      .setVisible(false)
+      .refreshBody();
+
+    // Draw an upper platform
+    this.platforms.create(width * 0.25, height * 0.4, null)
+      .setSize(width * 0.2, 20)
+      .setVisible(false)
+      .refreshBody();
   }
 
   update() {
@@ -148,7 +143,18 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Add this new method to the GameScene class, outside of create() or update()
+  togglePlayerControl() {
+    this.isAIControlled = !this.isAIControlled;
+    console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
+
+    // If we switch to player control, reset the player's velocity
+    if (!this.isAIControlled) {
+      this.player.setVelocityX(0);
+    }
+    // Return the new state of player control
+    return !this.isAIControlled;
+  }
+
   updateAIAction() {
     // Randomly choose a horizontal direction
     const rand = Math.random();
