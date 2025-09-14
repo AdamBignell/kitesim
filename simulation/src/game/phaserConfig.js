@@ -6,8 +6,8 @@ const phaserConfig = {
   width: 1280,
   height: 720,
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    mode: Phaser.Scale.FIT, // Scale the game to fit the container while maintaining aspect ratio
+    autoCenter: Phaser.Scale.CENTER_BOTH // Center the game canvas horizontally and vertically
   },
   // The 'parent' property will be set dynamically in our React component.
   // We'll leave it out here.

@@ -1,6 +1,6 @@
 'use client'; // This directive is crucial for Next.js App Router
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import phaserConfig from '../game/phaserConfig';
 
 // We import Phaser dynamically to ensure it's only loaded on the client side.
@@ -18,7 +18,6 @@ const initializePhaser = () => import('phaser').then(Phaser => {
 
 const PhaserGame = () => {
   const gameRef = useRef(null);
-  const [isPlayerControlled, setIsPlayerControlled] = useState(false);
 
 
   useEffect(() => {
@@ -38,37 +37,10 @@ const PhaserGame = () => {
     };
   }, []); // The empty dependency array ensures this runs only once on mount
 
-  const handleToggleControl = () => {
-    if (gameRef.current) {
-      const scene = gameRef.current.scene.getScene('default'); // 'default' is the key for the first scene
-      if (scene && scene.togglePlayerControl) {
-        const newControlState = scene.togglePlayerControl();
-        setIsPlayerControlled(newControlState);
-      }
-    }
-  };
-
 
   // This div is where the Phaser canvas will be injected.
   return (
-    <div style={{ position: 'relative', width: '100%', maxWidth: '1280px', margin: 'auto' }}>
-      <div style={{ position: 'relative', width: '100%', height: 0, paddingTop: '56.25%' }}>
-        <div id="phaser-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
-      </div>
-      <button
-        onClick={handleToggleControl}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          cursor: 'pointer',
-          zIndex: 10,
-        }}
-      >
-        {isPlayerControlled ? 'Release Control' : 'Possess'}
-      </button>
-    </div>
+    <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
   );
 };
 
