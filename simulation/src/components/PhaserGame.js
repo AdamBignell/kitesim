@@ -1,6 +1,6 @@
 'use client'; // This directive is crucial for Next.js App Router
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import phaserConfig from '../game/phaserConfig';
 
 // We import Phaser dynamically to ensure it's only loaded on the client side.
@@ -18,6 +18,7 @@ const initializePhaser = () => import('phaser').then(Phaser => {
 
 const PhaserGame = () => {
   const gameRef = useRef(null);
+  const [isPlayerControlled, setIsPlayerControlled] = useState(false);
 
 
   useEffect(() => {
@@ -37,10 +38,40 @@ const PhaserGame = () => {
     };
   }, []); // The empty dependency array ensures this runs only once on mount
 
+  const handleToggleControl = () => {
+    if (gameRef.current) {
+      const scene = gameRef.current.scene.getScene('default'); // 'default' is the key for the first scene
+      if (scene && scene.togglePlayerControl) {
+        const newControlState = scene.togglePlayerControl();
+        setIsPlayerControlled(newControlState);
+      }
+    }
+  };
+
 
   // This div is where the Phaser canvas will be injected.
   return (
-    <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
+      <button
+        onClick={handleToggleControl}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          padding: '10px',
+          fontSize: '14px',
+          cursor: 'pointer',
+          zIndex: 10,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          color: 'white',
+          border: '1px solid white',
+          borderRadius: '5px'
+        }}
+      >
+        <span role="img" aria-label="spiral">🌀</span> {isPlayerControlled ? 'Release' : 'Possess'}
+      </button>
+    </div>
   );
 };
 
