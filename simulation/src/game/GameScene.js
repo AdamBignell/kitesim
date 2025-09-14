@@ -81,6 +81,31 @@ export default class GameScene extends Phaser.Scene {
     this.maxJumps = 2;
 
     // Set up keyboard input.
+    // --- INPUT CAPTURE SOLUTION ---
+    // We list all the key codes the game should "own"
+    const GAME_KEYS = [
+      'Space',
+      'ShiftLeft',
+      'ShiftRight',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'KeyW',
+      'KeyA',
+      'KeyS',
+      'KeyD'
+    ];
+
+    // Listen for ANY keydown event
+    this.input.keyboard.on('keydown', (event) => {
+      // Check if the pressed key is one of our designated game keys
+      if (GAME_KEYS.includes(event.code)) {
+        // THIS IS THE FIX:
+        // Stop the browser from performing its default action (like clicking a button)
+        event.preventDefault();
+      }
+    });
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.keys = this.input.keyboard.addKeys({
@@ -172,11 +197,6 @@ export default class GameScene extends Phaser.Scene {
         const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
         this.player.setVelocityY(jumpForce);
 
-        // If not moving horizontally, apply a small boost in the last direction
-        if (this.player.body.velocity.x === 0) {
-          const boost = this.lastDirection === 'left' ? -50 : 50;
-          this.player.setVelocityX(this.player.body.velocity.x + boost);
-        }
       }
     }
 

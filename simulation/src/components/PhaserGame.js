@@ -38,7 +38,7 @@ const PhaserGame = () => {
     };
   }, []); // The empty dependency array ensures this runs only once on mount
 
-  const handleToggleControl = () => {
+  const handleToggleControl = (e) => {
     if (gameRef.current) {
       const scene = gameRef.current.scene.getScene('default'); // 'default' is the key for the first scene
       if (scene && scene.togglePlayerControl) {
@@ -46,6 +46,8 @@ const PhaserGame = () => {
         setIsPlayerControlled(newControlState);
       }
     }
+    // Tell the button to lose focus
+    e.target.blur();
   };
 
 
