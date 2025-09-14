@@ -14,7 +14,7 @@ const phaserConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 800 }, // A good starting gravity for a platformer
+      gravity: { y: 1500 }, // Change this value
       debug: false
     }
   },

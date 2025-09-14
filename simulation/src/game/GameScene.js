@@ -18,6 +18,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // In create()
+    this.WALK_SPEED = 200;
+    this.SPRINT_SPEED = 350;
+    this.BASE_JUMP_FORCE = -650;
+    this.SPRINT_JUMP_FORCE = -750;
+
+    // In create(), near this.isAIControlled
+    this.isAISprinting = false;
     // At the top of the create() method
     this.isAIControlled = true; // Start in AI mode by default
     this.aiAction = 'idle';     // Stores the AI's current horizontal movement
@@ -59,6 +67,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Set up keyboard input.
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.keys = this.input.keyboard.addKeys({
       up: 'W',
       left: 'A',
@@ -108,33 +117,41 @@ export default class GameScene extends Phaser.Scene {
     // 2. Check which control mode is active
     if (this.isAIControlled) {
       // --- AI Control Logic ---
+      const targetSpeed = this.isAISprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
+
       if (this.aiAction === 'left') {
-        this.player.setVelocityX(-200);
+        this.player.setVelocityX(-targetSpeed);
       } else if (this.aiAction === 'right') {
-        this.player.setVelocityX(200);
+        this.player.setVelocityX(targetSpeed);
       } else { // 'idle'
         this.player.setVelocityX(0);
       }
     } else {
       // --- Player Control Logic ---
-      if (this.cursors.left.isDown || this.keys.left.isDown) {
-        this.player.setVelocityX(-200);
-      } else if (this.cursors.right.isDown || this.keys.right.isDown) {
-        this.player.setVelocityX(200);
+      const isSprinting = this.keyShift.isDown;
+      const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
+
+      // Horizontal Movement
+      if (this.cursors.left.isDown) {
+        this.player.setVelocityX(-targetSpeed);
+      } else if (this.cursors.right.isDown) {
+        this.player.setVelocityX(targetSpeed);
       } else {
         this.player.setVelocityX(0);
       }
 
-      if (isJumpKeyDown && this.jumps < this.maxJumps) {
-        this.jumps++;
-        this.player.setVelocityY(-550);
+      // Jumping
+      if (this.cursors.up.isDown && this.player.body.touching.down) {
+        const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
+        this.player.setVelocityY(jumpForce);
       }
     }
   }
 
-  // Add this new method to the GameScene class, outside of create() or update()
   updateAIAction() {
-    // Randomly choose a horizontal direction
+    if (!this.isAIControlled) return; // Your bug fix line
+
+    // 1. Decide horizontal action
     const rand = Math.random();
     if (rand < 0.4) {
       this.aiAction = 'left';
@@ -144,10 +161,17 @@ export default class GameScene extends Phaser.Scene {
       this.aiAction = 'idle';
     }
 
-    // Separately, decide if the AI should try to jump
-    if (Math.random() < 0.3 && this.jumps < this.maxJumps) {
-      this.jumps++;
-      this.player.setVelocityY(-550); // Same jump force as the player
+    // 2. Decide sprint state (40% chance to sprint)
+    this.isAISprinting = Math.random() < 0.4;
+
+    // 3. Decide to jump (only if on ground)
+    if (this.player.body.touching.down) {
+      // 30% chance to attempt a jump
+      if (Math.random() < 0.3) {
+        // Use the correct jump force based on sprint state
+        const jumpForce = this.isAISprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
+        this.player.setVelocityY(jumpForce);
+      }
     }
   }
 }
