@@ -14,9 +14,11 @@ const mockSceneSystems = {
       staticGroup: jest.fn(() => ({
         add: jest.fn(),
         clear: jest.fn(),
-        create: jest.fn().mockReturnThis(),
-        setSize: jest.fn().mockReturnThis(),
-        setVisible: jest.fn().mockReturnThis(),
+        create: jest.fn(() => ({
+          setSize: jest.fn().mockReturnThis(),
+          setVisible: jest.fn().mockReturnThis(),
+          refreshBody: jest.fn().mockReturnThis(),
+        })),
         refresh: jest.fn(),
       })),
       sprite: jest.fn(() => ({
@@ -74,5 +76,9 @@ module.exports = {
         SHIFT: 'SHIFT',
       },
     },
+  },
+  Math: {
+    Between: jest.fn((min) => min),
+    Clamp: jest.fn((value, min, max) => Math.max(min, Math.min(value, max))),
   },
 };
