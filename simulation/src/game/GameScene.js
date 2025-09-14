@@ -18,6 +18,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // At the top of the create() method
+    this.isAIControlled = true; // Start in AI mode by default
+    this.aiAction = 'idle';     // Stores the AI's current horizontal movement
+
     // This method is called once when the scene is created.
     // Set the background color to white.
     this.cameras.main.setBackgroundColor('#ffffff');
@@ -52,16 +56,50 @@ export default class GameScene extends Phaser.Scene {
 
     // Set up keyboard input.
     this.cursors = this.input.keyboard.createCursorKeys();
+
+    // In the create() method
+    this.time.addEvent({
+      delay: 2000, // AI makes a new decision every 2 seconds
+      callback: this.updateAIAction,
+      callbackScope: this,
+      loop: true
+    });
+
+    this.input.keyboard.on('keydown', (event) => {
+      // Check if the key is 'P' and if the Ctrl key is held down
+      if (event.key === 'p' && event.ctrlKey) {
+        this.isAIControlled = !this.isAIControlled; // Flip the control state
+        console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
+
+        // If we switch back to player control, reset the player's velocity
+        if (!this.isAIControlled) {
+          this.player.setVelocityX(0);
+        }
+      }
+    });
   }
 
-  update() {
-    // This is where the main simulation logic will go.
-    if (!this.cursors || !this.player) {
-      // Do nothing if cursors or player are not initialized yet.
-      return;
-    }
+// Replace your entire existing update() method with this
+update() {
+  // 1. Check for falling off the screen
+  if (this.player.y > this.game.config.height) {
+    this.player.setVelocity(0, 0);       // Stop its movement
+    this.player.setPosition(100, 450);   // Reset to the start position
+    return; // Skip the rest of the update loop for this frame
+  }
 
-    // Horizontal movement
+  // 2. Check which control mode is active
+  if (this.isAIControlled) {
+    // --- AI Control Logic ---
+    if (this.aiAction === 'left') {
+      this.player.setVelocityX(-200);
+    } else if (this.aiAction === 'right') {
+      this.player.setVelocityX(200);
+    } else { // 'idle'
+      this.player.setVelocityX(0);
+    }
+  } else {
+    // --- Player Control Logic ---
     if (this.cursors.left.isDown) {
       this.player.setVelocityX(-200);
     } else if (this.cursors.right.isDown) {
@@ -70,9 +108,31 @@ export default class GameScene extends Phaser.Scene {
       this.player.setVelocityX(0);
     }
 
-    // Jumping
     if (this.cursors.up.isDown && this.player.body.touching.down) {
       this.player.setVelocityY(-550);
+    }
+  }
+}
+
+  // Add this new method to the GameScene class, outside of create() or update()
+  updateAIAction() {
+    // Randomly choose a horizontal direction
+    const rand = Math.random();
+    if (rand < 0.4) {
+      this.aiAction = 'left';
+    } else if (rand < 0.8) {
+      this.aiAction = 'right';
+    } else {
+      this.aiAction = 'idle';
+    }
+
+    // Separately, decide if the AI should try to jump
+    // It should only be able to jump if it's on the ground.
+    if (this.player.body.touching.down) {
+      // Give it a 30% chance to jump when it makes a new decision
+      if (Math.random() < 0.3) {
+        this.player.setVelocityY(-550); // Same jump force as the player
+      }
     }
   }
 }
