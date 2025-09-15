@@ -288,7 +288,7 @@ export default class GameScene extends Phaser.Scene {
   // --- New Chunk Management Method ---
   updateActiveChunks() {
     const { x: playerChunkX, y: playerChunkY } = this.playerChunkCoord;
-    const loadRadius = 1; // Load a 3x3 grid of chunks (1 chunk in each direction)
+    const loadRadius = 2; // Load a 5x5 grid of chunks (2 chunks in each direction)
     const newActiveChunks = new Map();
 
     // Load new chunks
