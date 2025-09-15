@@ -1,4 +1,5 @@
 import PlayerCapabilitiesProfile from './PlayerCapabilitiesProfile';
+import * as Phaser from 'phaser';
 
 /**
  * A collection of static, pure functions for all physics calculations.
@@ -6,40 +7,72 @@ import PlayerCapabilitiesProfile from './PlayerCapabilitiesProfile';
  */
 export default class Physics {
   /**
-   * (Placeholder) Determines if endPoint is reachable from startPoint via any valid player move.
-   * This is the master validation function.
-   * @param {import('phaser').Math.Vector2} startPoint - The starting point.
-   * @param {import('phaser').Math.Vector2} endPoint - The potential destination.
    * @param {PlayerCapabilitiesProfile} pcp - The player's capabilities profile.
-   * @returns {boolean} - True if the destination is reachable, false otherwise.
    */
-  static canReach(startPoint, endPoint, pcp) {
-    // TODO: Implement the actual physics calculation.
-    // This will involve analyzing jump arcs, run speed, etc.
-    console.warn('Physics.canReach is not yet implemented.');
-    // For now, let's assume a simple distance check.
-    const distance = Phaser.Math.Distance.BetweenPoints(startPoint, endPoint);
-    const maxReach = pcp.runSpeed * 2; // Simplified placeholder
-    return distance <= maxReach;
+  constructor(pcp) {
+    this.pcp = pcp;
+  }
+
+  /**
+   * Calculates the maximum height a player can reach with a single jump.
+   * @returns {number} The maximum jump height in pixels.
+   */
+  calculateMaxJumpHeight() {
+    // Using the formula: h = v^2 / (2 * g)
+    return (this.pcp.jumpVelocity * this.pcp.jumpVelocity) / (2 * Math.abs(this.pcp.gravity));
+  }
+
+  /**
+   * Calculates the horizontal distance a player can travel with a single jump.
+   * @returns {number} The maximum jump distance in pixels.
+   */
+  calculateMaxJumpDistance() {
+    const timeInAir = (2 * this.pcp.jumpVelocity) / Math.abs(this.pcp.gravity);
+    return this.pcp.runSpeed * timeInAir;
+  }
+
+  /**
+   * Checks if a gap is traversable by jumping.
+   * @param {number} distance - The horizontal distance of the gap.
+   * @param {number} height - The vertical distance of the gap.
+   * @returns {boolean} True if the gap is traversable.
+   */
+  canTraverse(distance, height) {
+    const maxJumpHeight = this.calculateMaxJumpHeight();
+    if (height > maxJumpHeight) {
+      return false;
+    }
+
+    // This is a simplified check. A more accurate check would involve trajectory calculation.
+    const timeToReachHeight = Math.sqrt((2 * height) / Math.abs(this.pcp.gravity));
+    const timeInAir = (2 * (this.pcp.jumpVelocity - Math.sqrt(this.pcp.jumpVelocity*this.pcp.jumpVelocity - 2 * Math.abs(this.pcp.gravity) * height)))/Math.abs(this.pcp.gravity);
+    const maxDistanceAtHeight = this.pcp.runSpeed * timeInAir;
+
+    return distance <= maxDistanceAtHeight;
   }
 
   /**
    * (Placeholder) Returns an array of points representing a player's jump arc.
    * The generator will use this to ensure the path is clear of obstructions.
    * @param {import('phaser').Math.Vector2} startPoint - The starting point of the jump.
-   * @param {PlayerCapabilitiesProfile} pcp - The player's capabilities profile.
    * @param {boolean} isRunning - Whether the player is running while jumping.
    * @returns {import('phaser').Math.Vector2[]} - An array of points representing the trajectory.
    */
-  static getJumpTrajectory(startPoint, pcp, isRunning) {
-    // TODO: Implement the actual trajectory calculation using projectile motion equations.
-    // (v_y_final)^2 = (v_y_initial)^2 + 2 * a * d
-    // d = v_initial * t + 0.5 * a * t^2
-    console.warn('Physics.getJumpTrajectory is not yet implemented.');
+  getJumpTrajectory(startPoint, isRunning) {
+    const trajectory = [];
+    const initialVelocityX = isRunning ? this.pcp.runSpeed : 0;
+    let y = startPoint.y;
+    let x = startPoint.x;
+    let vy = -this.pcp.jumpVelocity;
+    const g = this.pcp.gravity / 60; // Assuming 60 FPS
 
-    // For now, return a simple straight line for visualization.
-    const endPoint = new Phaser.Math.Vector2(startPoint.x + (isRunning ? 200 : 100), startPoint.y - 100);
-    const line = new Phaser.Geom.Line(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-    return line.getPoints(10);
+    for (let t = 0; t < 120; t++) { // Simulate for 2 seconds
+      x += initialVelocityX / 60;
+      y += vy / 60;
+      vy += g;
+      trajectory.push(new Phaser.Math.Vector2(x, y));
+    }
+
+    return trajectory;
   }
 }

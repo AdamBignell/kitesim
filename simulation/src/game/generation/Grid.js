@@ -71,6 +71,22 @@ export default class Grid {
   }
 
   /**
+   * Fills a rectangular area of the grid with a value.
+   * @param {number} x - The starting x-coordinate.
+   * @param {number} y - The starting y-coordinate.
+   * @param {number} width - The width of the rectangle.
+   * @param {number} height - The height of the rectangle.
+   * @param {*} value - The value to fill with.
+   */
+  fillRect(x, y, width, height, value) {
+    for (let j = y; j < y + height; j++) {
+      for (let i = x; i < x + width; i++) {
+        this.setTile(i, j, value);
+      }
+    }
+  }
+
+  /**
    * Converts the grid into a standard 2D integer array.
    * Assumes tile types are numbers (e.g., 0 for empty, 1 for solid).
    * @returns {number[][]} - The 2D integer array representation of the grid.
