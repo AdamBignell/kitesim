@@ -2,26 +2,26 @@ import Structure from './Structure';
 import Grid from './Grid';
 
 export function createFloor(width, {
-    height = 20,
-    bottomPadding = 3,
-    topPadding = 10,
+    height = 100,
+    bottomPadding = 10,
+    topPadding = 20,
     // Player capabilities
-    maxJumpHeight = 5, // Max height player can jump, in tiles
-    maxStepHeight = 1, // Max height player can walk up without jumping
+    maxJumpHeight = 20, // Max height player can jump, in tiles
+    maxStepHeight = 2, // Max height player can walk up without jumping
     // Terrain feature probabilities
-    flatProbability = 0.6,
-    slopeProbability = 0.3,
-    wallProbability = 0.1
+    flatProbability = 0.3,
+    slopeProbability = 0.5,
+    wallProbability = 0.2
 }) {
     const grid = new Grid(width, height, 0);
-    let currentHeight = height - bottomPadding - 5;
+    let currentHeight = height - bottomPadding - 20;
 
     for (let x = 0; x < width; ) {
         const rand = Math.random();
 
         if (rand < flatProbability) {
             // Create a flat section
-            const length = Math.floor(Math.random() * 10) + 5;
+            const length = Math.floor(Math.random() * 20) + 10;
             for (let i = 0; i < length && x + i < width; i++) {
                 for (let y = currentHeight; y < height; y++) {
                     grid.setTile(x + i, y, 1);
@@ -30,7 +30,7 @@ export function createFloor(width, {
             x += length;
         } else if (rand < flatProbability + slopeProbability) {
             // Create a slope
-            const length = Math.floor(Math.random() * 10) + 5;
+            const length = Math.floor(Math.random() * 20) + 10;
             const slopeHeight = Math.floor(Math.random() * (maxJumpHeight - 1)) + 1;
             const slopeDirection = Math.random() > 0.5 ? 1 : -1;
 
