@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import LevelGenerator from './generation/LevelGenerator'; // Add this at the top
+import LevelGenerator from './LevelGenerator';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -37,21 +37,25 @@ export default class GameScene extends Phaser.Scene {
     // This method is called once when the scene is created.
     // Set the background color to white.
     this.cameras.main.setBackgroundColor('#ffffff');
-    // In the create() method: this.levelGenerator = new LevelGenerator(this);
+
+    // --- World & Chunk Management Setup ---
+    this.TILE_SIZE = 32;
+    this.CHUNK_SIZE = 16; // Chunks are 16x16 tiles
+    this.activeChunks = new Map();
+    this.playerChunkCoord = { x: 0, y: 0 };
     this.levelGenerator = new LevelGenerator(this);
 
-    // Create a static group for platforms.
-    this.platforms = this.physics.add.staticGroup();
-
-    this.redrawLevel(this.scale.gameSize);
-
-    // Create the player sprite.
+    // --- Player Setup ---
+    // (Your existing player creation code)
     this.player = this.physics.add.sprite(100, 450, 'idle');
     this.player.setBounce(0.2);
-    this.player.setCollideWorldBounds(true);
+    this.player.setCollideWorldBounds(false); // We'll manage world bounds manually now
 
-    // Add a collider between the player and the platforms.
-    this.physics.add.collider(this.player, this.platforms);
+    // --- Camera ---
+    this.cameras.main.startFollow(this.player);
+
+    // --- Initial World Generation ---
+    this.updateActiveChunks();
 
     // Create animations for the player.
     this.anims.create({
@@ -150,11 +154,17 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // 1. Check for falling off the screen
-    if (this.player.y > this.game.config.height) {
-      this.player.setVelocity(0, 0); // Stop its movement
-      this.player.setPosition(100, 450); // Reset to the start position
-      return; // Skip the rest of the update loop for this frame
+    // --- Dynamic Chunk Loading/Unloading ---
+    const playerWorldX = this.player.x;
+    const playerWorldY = this.player.y;
+
+    const chunkX = Math.floor(playerWorldX / (this.CHUNK_SIZE * this.TILE_SIZE));
+    const chunkY = Math.floor(playerWorldY / (this.CHUNK_SIZE * this.TILE_SIZE));
+
+    // If the player has moved to a new chunk, update the world
+    if (chunkX !== this.playerChunkCoord.x || chunkY !== this.playerChunkCoord.y) {
+      this.playerChunkCoord = { x: chunkX, y: chunkY };
+      this.updateActiveChunks();
     }
 
     // Reset jumps if touching the ground or the world bounds
@@ -274,17 +284,40 @@ export default class GameScene extends Phaser.Scene {
       }
     }
   }
-  // In GameScene.js, replace the contents of redrawLevel with this:
-  redrawLevel(gameSize) {
-    const width = gameSize.width;
-    const height = gameSize.height;
-    // Update the world bounds
-    this.physics.world.setBounds(0, 0, width, height);
 
-    // Clear any previous platforms
-    this.platforms.clear(true, true);
+  // --- New Chunk Management Method ---
+  updateActiveChunks() {
+    const { x: playerChunkX, y: playerChunkY } = this.playerChunkCoord;
+    const loadRadius = 1; // Load a 3x3 grid of chunks (1 chunk in each direction)
+    const newActiveChunks = new Map();
 
-    // Generate a new, traversable level with 20 platforms
-    this.levelGenerator.generate(this.platforms, 20);
+    // Load new chunks
+    for (let y = playerChunkY - loadRadius; y <= playerChunkY + loadRadius; y++) {
+      for (let x = playerChunkX - loadRadius; x <= playerChunkX + loadRadius; x++) {
+        const chunkKey = `${x},${y}`;
+        newActiveChunks.set(chunkKey, null); // Mark as a desired chunk
+
+        if (!this.activeChunks.has(chunkKey)) {
+          // This is a new chunk that needs to be generated
+          const newChunkPlatforms = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
+          this.activeChunks.set(chunkKey, newChunkPlatforms);
+          this.physics.add.collider(this.player, newChunkPlatforms);
+        } else {
+          // It's an old chunk, just carry it over
+          newActiveChunks.set(chunkKey, this.activeChunks.get(chunkKey));
+        }
+      }
+    }
+
+    // Unload old chunks
+    for (const [key, chunkGroup] of this.activeChunks.entries()) {
+      if (!newActiveChunks.has(key)) {
+        if (chunkGroup) {
+          chunkGroup.destroy(true, true); // Destroy the platforms in the group
+        }
+      }
+    }
+
+    this.activeChunks = newActiveChunks;
   }
 }
