@@ -18,7 +18,7 @@ const phaserConfig = {
       debug: false
     }
   },
-  scene: GameScene, // Add our scene to the game
+  scene: [], // Scenes are added dynamically
   backgroundColor: '#000000',
 };
 

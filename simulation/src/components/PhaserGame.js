@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import phaserConfig from '../game/phaserConfig';
+import GameScene from '../game/GameScene';
 
 // We import Phaser dynamically to ensure it's only loaded on the client side.
 const initializePhaser = (onReady) => import('phaser').then(Phaser => {
@@ -12,8 +13,8 @@ const initializePhaser = (onReady) => import('phaser').then(Phaser => {
       parent: 'phaser-container',
     });
 
-    // Pass the onReady callback to the scene
-    game.scene.start('default', { onReady });
+    // Add the scene and pass the onReady callback
+    game.scene.add('default', GameScene, true, { onReady });
 
     resolve(game);
   });
