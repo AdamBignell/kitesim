@@ -23,7 +23,7 @@ export default class GameScene extends Phaser.Scene {
   create() {
     // In create()
     this.WALK_SPEED = 200;
-    this.SPRINT_SPEED = 350;
+    this.SPRINT_SPEED = 450;
     this.BASE_JUMP_FORCE = -650;
     this.SPRINT_JUMP_FORCE = -750;
     this.WALL_SLIDE_SPEED = 100;
@@ -249,13 +249,26 @@ export default class GameScene extends Phaser.Scene {
 
       // Horizontal Movement
       if (!this.isWallJumping) {
-        if (this.cursors.left.isDown || this.keys.left.isDown) {
-          this.player.setVelocityX(-targetSpeed);
+        const isPressingLeft = this.cursors.left.isDown || this.keys.left.isDown;
+        const isPressingRight = this.cursors.right.isDown || this.keys.right.isDown;
+
+        if (isPressingLeft) {
+          // Prevents sticking to walls when on the ground
+          if (this.player.body.blocked.left && !isWallSliding) {
+            this.player.setVelocityX(0);
+          } else {
+            this.player.setVelocityX(-targetSpeed);
+          }
           this.lastDirection = 'left';
-        } else if (this.cursors.right.isDown || this.keys.right.isDown) {
-          this.player.setVelocityX(targetSpeed);
+        } else if (isPressingRight) {
+          // Prevents sticking to walls when on the ground
+          if (this.player.body.blocked.right && !isWallSliding) {
+            this.player.setVelocityX(0);
+          } else {
+            this.player.setVelocityX(targetSpeed);
+          }
           this.lastDirection = 'right';
-        } else if (this.player.body.touching.down) {
+        } else if (this.player.body.touching.down || this.player.body.blocked.down) {
           // Only stop horizontal movement if on the ground
           this.player.setVelocityX(0);
         }
