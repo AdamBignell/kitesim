@@ -41,17 +41,25 @@ export default class GameScene extends Phaser.Scene {
     this.levelGenerator = new LevelGenerator(this);
 
     // Create a static group for platforms.
-    this.platforms = this.physics.add.staticGroup();
+    this.solidPlatforms = this.physics.add.staticGroup();
+    this.fallThroughPlatforms = this.physics.add.staticGroup();
 
     this.redrawLevel(this.scale.gameSize);
 
+    const startPos = this.levelGenerator.getPlayerStartPosition();
     // Create the player sprite.
-    this.player = this.physics.add.sprite(100, 450, 'idle');
+    this.player = this.physics.add.sprite(startPos.x, startPos.y, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
 
     // Add a collider between the player and the platforms.
-    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.solidPlatforms);
+    this.physics.add.collider(this.player, this.fallThroughPlatforms, (player, platform) => {
+      if (player.body.velocity.y < 0) {
+        return false; // Player is moving up, so pass through
+      }
+      return true; // Player is moving down, so collide
+    }, null, this);
 
     // Create animations for the player.
     this.anims.create({
@@ -282,9 +290,11 @@ export default class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, width, height);
 
     // Clear any previous platforms
-    this.platforms.clear(true, true);
+    this.solidPlatforms.clear(true, true);
+    this.fallThroughPlatforms.clear(true, true);
 
-    // Generate a new, traversable level with 20 platforms
-    this.levelGenerator.generate(this.platforms, 20);
+    // Generate and build the level
+    this.levelGenerator.generate();
+    this.levelGenerator.buildLevel(this.solidPlatforms, this.fallThroughPlatforms);
   }
 }

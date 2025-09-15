@@ -1,45 +1,116 @@
-import * as Phaser from 'phaser';
+import Grid from './generation/Grid.js';
+import Physics from './generation/Physics.js';
+import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile.js';
 
-export default class LevelGenerator { constructor(scene) { this.scene = scene; }
 /**
+ * @typedef {import('phaser').Scene} Scene
+ * @typedef {import('phaser').GameObjects.Group} Group
+ * @typedef {import('phaser').GameObjects.Sprite} Sprite
+ * @typedef {import('phaser').Physics.Arcade.StaticGroup} StaticGroup
+ */
 
-Generates a series of traversable platforms.
-@param {Phaser.Physics.Arcade.StaticGroup} platformsGroup - The group to add platforms to.
-@param {number} numPlatforms - The total number of platforms to generate. */
-  generate(platformsGroup, numPlatforms) {
-    // --- Define Character Jump Constraints --- // These values determine how far apart platforms can be.
-    const MAX_JUMP_WIDTH = 250;
-    const MIN_JUMP_WIDTH = 80;
-    const MAX_JUMP_HEIGHT = 200;
-    const { width, height } = this.scene.scale;
+export const TILE_TYPES = Object.freeze({
+  EMPTY: 0,
+  SOLID: 1,
+  PLATFORM: 2, // Fall-through
+});
 
-    // 1. Create the starting floor platform
-    const floor = this.scene.add.rectangle(width / 2, height, width, 40);
-    platformsGroup.add(floor);
+export default class LevelGenerator {
+  /** @type {Scene} */
+  scene;
+  /** @type {Grid} */
+  grid;
+  /** @type {PlayerCapabilitiesProfile} */
+  pcp;
 
+  /**
+   * @param {Scene} scene - The Phaser scene.
+   */
+  constructor(scene) {
+    this.scene = scene;
+    this.grid = new Grid(50, 38); // 800x600 at 16x16 tiles
+  }
 
-    let lastPlatform = { x: 100, y: height - 50 };
+  /**
+   * Generates the level layout and stores it in the grid.
+   */
+  generate() {
+    // Fill the entire grid with empty tiles first
+    this.grid.initialize(this.grid.width, this.grid.height, TILE_TYPES.EMPTY);
 
-    // 2. Generate the main platforms
-    for (let i = 0; i < numPlatforms; i++) {
-      const nextX = lastPlatform.x + Phaser.Math.Between(MIN_JUMP_WIDTH, MAX_JUMP_WIDTH);
-      const nextY = lastPlatform.y + Phaser.Math.Between(-MAX_JUMP_HEIGHT, MAX_JUMP_HEIGHT);
-
-      // Clamp Y to stay within a reasonable vertical range
-      const clampedY = Phaser.Math.Clamp(nextY, height * 0.25, height * 0.9);
-
-      // If the next platform is off-screen horizontally, wrap it around
-      if (nextX > width - 100) {
-        lastPlatform = { x: 100, y: height - 50 };
-        continue; // Skip this iteration and start fresh on the left
-      }
-
-      const platformWidth = Phaser.Math.Between(100, 250);
-      const platform = this.scene.add.rectangle(nextX, clampedY, platformWidth, 20, 0x000000);
-      platformsGroup.add(platform);
-
-      lastPlatform = { x: nextX, y: clampedY };
+    // Create the outer walls
+    for (let x = 0; x < this.grid.width; x++) {
+      this.grid.setTile(x, 0, TILE_TYPES.SOLID); // Ceiling
+      this.grid.setTile(x, this.grid.height - 1, TILE_TYPES.SOLID); // Floor
+    }
+    for (let y = 0; y < this.grid.height; y++) {
+      this.grid.setTile(0, y, TILE_TYPES.SOLID); // Left wall
+      this.grid.setTile(this.grid.width - 1, y, TILE_TYPES.SOLID); // Right wall
     }
 
-    platformsGroup.refresh();
-} }
+    // Add some platforms
+    this.addPlatform(5, 30, 10);
+    this.addPlatform(15, 25, 10);
+    this.addPlatform(25, 20, 10);
+
+    // Add a fall-through platform
+    this.addFallThroughPlatform(35, 15, 10);
+
+    // Add another platform high up
+    this.addPlatform(20, 10, 10);
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} width
+   */
+  addPlatform(x, y, width) {
+    for (let i = 0; i < width; i++) {
+      this.grid.setTile(x + i, y, TILE_TYPES.SOLID);
+    }
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} width
+   */
+  addFallThroughPlatform(x, y, width) {
+    for (let i = 0; i < width; i++) {
+      this.grid.setTile(x + i, y, TILE_TYPES.PLATFORM);
+    }
+  }
+
+  /**
+   * @returns {{x: number, y: number}}
+   */
+  getPlayerStartPosition() {
+    return { x: 100, y: 450 };
+  }
+
+  /**
+   * @param {StaticGroup} solidGroup
+   * @param {StaticGroup} platformGroup
+   */
+  buildLevel(solidGroup, platformGroup) {
+    const TILE_SIZE = 16;
+    for (let y = 0; y < this.grid.height; y++) {
+      for (let x = 0; x < this.grid.width; x++) {
+        const tileType = this.grid.getTile(x, y);
+        const worldX = x * TILE_SIZE + TILE_SIZE / 2;
+        const worldY = y * TILE_SIZE + TILE_SIZE / 2;
+
+        if (tileType === TILE_TYPES.SOLID) {
+          const tile = this.scene.add.rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE, 0x000000);
+          solidGroup.add(tile);
+        } else if (tileType === TILE_TYPES.PLATFORM) {
+          const tile = this.scene.add.rectangle(worldX, worldY, TILE_SIZE, TILE_SIZE, 0x0000ff);
+          platformGroup.add(tile);
+        }
+      }
+    }
+    solidGroup.refresh();
+    platformGroup.refresh();
+  }
+}

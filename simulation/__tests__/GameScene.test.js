@@ -9,13 +9,22 @@ describe('GameScene', () => {
   let scene;
 
   beforeEach(() => {
-    // Create a new instance of the scene before each test
-    scene = new GameScene();
     LevelGenerator.mockClear();
+    LevelGenerator.mockImplementation(() => {
+      return {
+        generate: jest.fn(),
+        buildLevel: jest.fn(),
+        getPlayerStartPosition: jest.fn().mockReturnValue({ x: 100, y: 450 }),
+      };
+    });
+    scene = new GameScene();
+    // Clear the mock for staticGroup before each test
+    if (scene.physics.add.staticGroup.mockClear) {
+      scene.physics.add.staticGroup.mockClear();
+    }
   });
 
   it('should be an instance of Phaser.Scene', () => {
-    // Check that the super constructor was called with the correct scene key
     expect(Phaser.Scene).toHaveBeenCalledWith('default');
   });
 
@@ -26,26 +35,19 @@ describe('GameScene', () => {
 
   it('should create the player and platform groups', () => {
     scene.create();
-    expect(scene.physics.add.staticGroup).toHaveBeenCalled();
-    // The player is created at (100, 450) in GameScene.js
+    expect(scene.physics.add.staticGroup).toHaveBeenCalledTimes(2);
     expect(scene.physics.add.sprite).toHaveBeenCalledWith(100, 450, 'idle');
   });
 
   it('should have a togglePlayerControl method', () => {
-    // This test is not in the original plan, but it's good to have
-    // to ensure methods are correctly bound to the scene instance.
     expect(typeof scene.togglePlayerControl).toBe('function');
   });
 
   it('should use the LevelGenerator to create the level', () => {
-    scene.create(); // The create method calls redrawLevel
+    scene.create();
 
-    expect(LevelGenerator).toHaveBeenCalledTimes(1);
-    const generatorInstance = LevelGenerator.mock.instances[0];
-    const mockGenerate = generatorInstance.generate;
-
-    // Check that our generator's method was called
-    expect(mockGenerate).toHaveBeenCalled();
-    expect(mockGenerate).toHaveBeenCalledWith(scene.platforms, expect.any(Number));
+    const generatorInstance = scene.levelGenerator;
+    expect(generatorInstance.generate).toHaveBeenCalled();
+    expect(generatorInstance.buildLevel).toHaveBeenCalledWith(scene.solidPlatforms, scene.fallThroughPlatforms);
   });
 });
