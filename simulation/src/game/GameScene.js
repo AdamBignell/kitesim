@@ -23,9 +23,11 @@ export default class GameScene extends Phaser.Scene {
     this.SPRINT_JUMP_FORCE = -750;
     this.WALL_SLIDE_SPEED = 100;
     this.WALL_JUMP_FORCE_Y = -550;
-    this.WALL_JUMP_FORCE_X = 350;
+    this.WALL_JUMP_FORCE_X = 450;
+    this.WALL_JUMP_LOCKOUT = 250; // ms of input lockout
 
     // In create(), near this.isAIControlled
+    this.isWallJumping = false;
     this.isAISprinting = false;
     // At the top of the create() method
     this.isAIControlled = true; // Start in AI mode by default
@@ -197,23 +199,34 @@ export default class GameScene extends Phaser.Scene {
       }
 
       // Horizontal Movement
-      if (this.cursors.left.isDown || this.keys.left.isDown) {
-        this.player.setVelocityX(-targetSpeed);
-        this.lastDirection = 'left';
-      } else if (this.cursors.right.isDown || this.keys.right.isDown) {
-        this.player.setVelocityX(targetSpeed);
-        this.lastDirection = 'right';
-      } else if (this.player.body.touching.down) {
-        // Only stop horizontal movement if on the ground
-        this.player.setVelocityX(0);
+      if (!this.isWallJumping) {
+        if (this.cursors.left.isDown || this.keys.left.isDown) {
+          this.player.setVelocityX(-targetSpeed);
+          this.lastDirection = 'left';
+        } else if (this.cursors.right.isDown || this.keys.right.isDown) {
+          this.player.setVelocityX(targetSpeed);
+          this.lastDirection = 'right';
+        } else if (this.player.body.touching.down) {
+          // Only stop horizontal movement if on the ground
+          this.player.setVelocityX(0);
+        }
       }
 
       // Jumping
       if (isJumpKeyDown) {
         if (isWallSliding) {
           // Wall jump
+          this.isWallJumping = true;
           const wallJumpX = onWallLeft ? this.WALL_JUMP_FORCE_X : -this.WALL_JUMP_FORCE_X;
           this.player.setVelocity(wallJumpX, this.WALL_JUMP_FORCE_Y);
+
+          this.time.addEvent({
+            delay: this.WALL_JUMP_LOCKOUT,
+            callback: () => {
+              this.isWallJumping = false;
+            },
+            callbackScope: this
+          });
         } else if (this.jumps < this.maxJumps) {
           // Regular jump
           this.jumps++;
