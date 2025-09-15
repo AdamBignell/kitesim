@@ -4,6 +4,7 @@ import * as Structures from './generation/structures';
 import { createFloor } from './generation/MegaStructure';
 import Physics from './generation/Physics';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
+import GreedyMesher from './generation/GreedyMesher';
 
 export default class LevelGenerator {
   constructor(scene, pcp) {
@@ -20,19 +21,16 @@ export default class LevelGenerator {
 
     this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
 
-    for (let y = 0; y < chunkSize; y++) {
-      for (let x = 0; x < chunkSize; x++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          const tileWorldX = (chunkX * chunkSize) + x;
-          const tileWorldY = (chunkY * chunkSize) + y;
-          const platformX = tileWorldX * tileSize + tileSize / 2;
-          const platformY = tileWorldY * tileSize + tileSize / 2;
-          newPlatforms.create(platformX, platformY, null)
-            .setSize(tileSize, tileSize)
-            .setVisible(true)
-            .refreshBody();
-        }
-      }
+    const meshes = GreedyMesher.mesh(chunkGrid);
+    for (const mesh of meshes) {
+      const tileWorldX = (chunkX * chunkSize) + mesh.x;
+      const tileWorldY = (chunkY * chunkSize) + mesh.y;
+      const platformX = tileWorldX * tileSize;
+      const platformY = tileWorldY * tileSize;
+      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
+      newPlatform.setOrigin(0,0);
+      this.scene.physics.add.existing(newPlatform, true);
+      newPlatforms.add(newPlatform);
     }
 
     return newPlatforms;
@@ -133,19 +131,16 @@ export default class LevelGenerator {
     }
 
     // Finally, create the platform bodies from the modified chunkGrid
-    for (let y = 0; y < chunkSize; y++) {
-        for (let x = 0; x < chunkSize; x++) {
-            if (chunkGrid.getTile(x, y) === 1) {
-                const tileWorldX = (chunkX * chunkSize) + x;
-                const tileWorldY = (chunkY * chunkSize) + y;
-                const platformX = tileWorldX * tileSize + tileSize / 2;
-                const platformY = tileWorldY * tileSize + tileSize / 2;
-                newPlatforms.create(platformX, platformY, null)
-                    .setSize(tileSize, tileSize)
-                    .setVisible(true)
-                    .refreshBody();
-            }
-        }
+    const meshes = GreedyMesher.mesh(chunkGrid);
+    for (const mesh of meshes) {
+      const tileWorldX = (chunkX * chunkSize) + mesh.x;
+      const tileWorldY = (chunkY * chunkSize) + mesh.y;
+      const platformX = tileWorldX * tileSize;
+      const platformY = tileWorldY * tileSize;
+      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
+      newPlatform.setOrigin(0,0);
+      this.scene.physics.add.existing(newPlatform, true);
+      newPlatforms.add(newPlatform);
     }
 
     return { platforms: newPlatforms, spawnPoint };

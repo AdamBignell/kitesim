@@ -54,6 +54,12 @@ export default class GameScene extends Phaser.Scene {
 
 
     // --- Initial World Generation and Player Setup ---
+    // Create a simple black texture for platforms
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
+    graphics.generateTexture('platform', this.TILE_SIZE, this.TILE_SIZE);
+    graphics.destroy();
     // Generate the initial chunk and get the spawn point
     const { platforms: initialPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
 
