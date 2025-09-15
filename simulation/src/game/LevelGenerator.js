@@ -83,17 +83,72 @@ export default class LevelGenerator {
       }
     }
 
-    if (chunkX === 0 && chunkY === 0) {
-        // Player starts at (100, 450), which is tile (3, 14) in chunk (0,0)
-        const safeZone = { x: 1, y: 12, width: 5, height: 5 };
-        for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
-            for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
-                if (x >= 0 && x < width && y >= 0 && y < height) {
-                    chunkGrid.setTile(x, y, 0);
-                }
+  }
+
+  generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
+    const chunkX = 0;
+    const chunkY = 0;
+    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
+    const newPlatforms = this.scene.physics.add.staticGroup();
+    const placedStructures = [];
+
+    // First, place all the structures for the initial chunk
+    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+
+    // Now, create a safe zone for the player to spawn in
+    const safeZone = { x: 1, y: 12, width: 5, height: 5 };
+    for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
+        for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
+            if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+                chunkGrid.setTile(x, y, 0); // Clear out any terrain in the safe zone
             }
         }
     }
+
+    // Find a safe spawn point within the cleared safe zone
+    const searchX = safeZone.x + Math.floor(safeZone.width / 2);
+    let groundY = -1;
+
+    // Scan downwards from the top of the chunk to find the first solid tile in our search column
+    for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(searchX, y) === 1) {
+            groundY = y;
+            break;
+        }
+    }
+
+    let spawnPoint;
+    if (groundY !== -1) {
+        // We found ground. The spawn point should be slightly above it.
+        const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+        // Place the player 2 tiles above the ground to prevent spawning inside it
+        const spawnY = (chunkY * chunkSize + groundY) * tileSize - (tileSize * 2);
+        spawnPoint = { x: spawnX, y: spawnY };
+    } else {
+        // Fallback: If no ground is found in the search column (highly unlikely),
+        // spawn in the middle of the safe zone.
+        const fallbackX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+        const fallbackY = (chunkY * chunkSize + safeZone.y + Math.floor(safeZone.height / 2)) * tileSize + tileSize / 2;
+        spawnPoint = { x: fallbackX, y: fallbackY };
+    }
+
+    // Finally, create the platform bodies from the modified chunkGrid
+    for (let y = 0; y < chunkSize; y++) {
+        for (let x = 0; x < chunkSize; x++) {
+            if (chunkGrid.getTile(x, y) === 1) {
+                const tileWorldX = (chunkX * chunkSize) + x;
+                const tileWorldY = (chunkY * chunkSize) + y;
+                const platformX = tileWorldX * tileSize + tileSize / 2;
+                const platformY = tileWorldY * tileSize + tileSize / 2;
+                newPlatforms.create(platformX, platformY, null)
+                    .setSize(tileSize, tileSize)
+                    .setVisible(true)
+                    .refreshBody();
+            }
+        }
+    }
+
+    return { platforms: newPlatforms, spawnPoint };
   }
 
   canPlace(chunkGrid, structure, x, y, placedStructures) {

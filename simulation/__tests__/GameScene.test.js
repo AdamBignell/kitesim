@@ -8,6 +8,10 @@ jest.mock('../src/game/LevelGenerator', () => {
         return {
             generateChunk: jest.fn().mockReturnValue({
                 destroy: jest.fn()
+            }),
+            generateInitialChunkAndSpawnPoint: jest.fn().mockReturnValue({
+                platforms: { destroy: jest.fn() },
+                spawnPoint: { x: 150, y: 250 }
             })
         };
     });
@@ -53,10 +57,10 @@ describe('GameScene', () => {
     expect(scene.cameras.main.setBackgroundColor).toHaveBeenCalledWith('#ffffff');
   });
 
-  it('should create the player', () => {
+  it('should create the player at the spawn point', () => {
     scene.create();
-    // The player is created at (100, 450) in GameScene.js
-    expect(scene.physics.add.sprite).toHaveBeenCalledWith(100, 450, 'idle');
+    // The player is created at the spawnPoint from the level generator
+    expect(scene.physics.add.sprite).toHaveBeenCalledWith(150, 250, 'idle');
   });
 
   it('should have a togglePlayerControl method', () => {
@@ -65,11 +69,9 @@ describe('GameScene', () => {
     expect(typeof scene.togglePlayerControl).toBe('function');
   });
 
-  it('should use the LevelGenerator to create the level', () => {
-    scene.create(); // The create method calls updateActiveChunks
+  it('should use the LevelGenerator to create the initial level', () => {
+    scene.create(); // The create method calls generateInitialChunkAndSpawnPoint
 
-    expect(levelGenerator.generateChunk).toHaveBeenCalled();
-    // updateActiveChunks calls generateChunk with x, y, chunkSize, tileSize
-    expect(levelGenerator.generateChunk).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number));
+    expect(levelGenerator.generateInitialChunkAndSpawnPoint).toHaveBeenCalled();
   });
 });
