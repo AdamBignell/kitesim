@@ -55,7 +55,7 @@ export default class GameScene extends Phaser.Scene {
 
     // --- Player Setup ---
     // (Your existing player creation code)
-    this.player = this.physics.add.sprite(100, 3000, 'idle');
+    this.player = this.physics.add.sprite(100, 450, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(false); // We'll manage world bounds manually now
 

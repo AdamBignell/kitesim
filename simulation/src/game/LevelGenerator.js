@@ -78,7 +78,7 @@ export default class LevelGenerator {
         }
       }
 
-      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
+      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures, chunkX, chunkY)) {
         this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
       }
     }
@@ -96,9 +96,19 @@ export default class LevelGenerator {
     }
   }
 
-  canPlace(chunkGrid, structure, x, y, placedStructures) {
+  canPlace(chunkGrid, structure, x, y, placedStructures, chunkX, chunkY) {
     if (x < 0 || y < 0 || x + structure.width > chunkGrid.width || y + structure.height > chunkGrid.height) {
       return false;
+    }
+
+    if (chunkX === 0 && chunkY === 0) {
+        const safeZone = { x: 1, y: 12, width: 5, height: 5 };
+        if (x < safeZone.x + safeZone.width &&
+            x + structure.width > safeZone.x &&
+            y < safeZone.y + safeZone.height &&
+            y + structure.height > safeZone.y) {
+          return false; // Collision with safe zone
+        }
     }
 
     for (const placed of placedStructures) {
