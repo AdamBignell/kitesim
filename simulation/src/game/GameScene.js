@@ -10,6 +10,7 @@ export default class GameScene extends Phaser.Scene {
 
   init(data) {
     this.levelGenerator = data.levelGenerator || new LevelGenerator(this, this.createPlayerCapabilitiesProfile());
+    this.onReady = data.onReady;
   }
 
   preload() {
@@ -139,6 +140,10 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+
+    if (this.onReady) {
+      this.onReady();
+    }
   }
 
   createPlayerCapabilitiesProfile() {

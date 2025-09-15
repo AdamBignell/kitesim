@@ -1,7 +1,7 @@
-'use client'; // This directive marks the component as a Client Component
+'use client';
 
 import dynamic from 'next/dynamic';
-import React from 'react';
+import React, { useState } from 'react';
 
 // Define a loading component
 const LoadingComponent = () => (
@@ -23,21 +23,32 @@ const LoadingComponent = () => (
       }
       .blinking-text {
         animation: blink 1.5s linear infinite;
+        background: -webkit-linear-gradient(45deg, #8a2be2, #4169e1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
     `}</style>
     <p className="blinking-text">Dreaming...</p>
   </div>
 );
 
-
-const PhaserGame = dynamic(
-  () => import('./PhaserGame'),
-  {
-    ssr: false,
-    loading: () => <LoadingComponent />
-  }
-);
+const PhaserGame = dynamic(() => import('./PhaserGame'), {
+  ssr: false,
+});
 
 export default function GameLoader() {
-  return <PhaserGame />;
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleGameReady = () => {
+    setIsLoading(false);
+  };
+
+  return (
+    <>
+      {isLoading && <LoadingComponent />}
+      <div style={{ display: isLoading ? 'none' : 'block', width: '100%', height: '100%' }}>
+        <PhaserGame onReady={handleGameReady} />
+      </div>
+    </>
+  );
 }

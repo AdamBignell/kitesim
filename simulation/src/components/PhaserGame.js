@@ -4,19 +4,22 @@ import { useEffect, useRef, useState } from 'react';
 import phaserConfig from '../game/phaserConfig';
 
 // We import Phaser dynamically to ensure it's only loaded on the client side.
-// This is critical for Next.js which does server-side rendering.
-const initializePhaser = () => import('phaser').then(Phaser => {
+const initializePhaser = (onReady) => import('phaser').then(Phaser => {
   return new Promise(resolve => {
     // The main game instance
     const game = new Phaser.Game({
       ...phaserConfig,
-      parent: 'phaser-container', // Link to the div ID in our component
+      parent: 'phaser-container',
     });
+
+    // Pass the onReady callback to the scene
+    game.scene.start('default', { onReady });
+
     resolve(game);
   });
 });
 
-const PhaserGame = () => {
+const PhaserGame = ({ onReady }) => {
   const gameRef = useRef(null);
   const [isPlayerControlled, setIsPlayerControlled] = useState(false);
 
@@ -24,7 +27,7 @@ const PhaserGame = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && !gameRef.current) {
       // Initialize the game only once
-      initializePhaser().then(game => {
+      initializePhaser(onReady).then(game => {
         gameRef.current = game;
       });
     }
@@ -36,7 +39,7 @@ const PhaserGame = () => {
         gameRef.current = null;
       }
     };
-  }, []); // The empty dependency array ensures this runs only once on mount
+  }, [onReady]);
 
   const handleToggleControl = (e) => {
     if (gameRef.current) {
