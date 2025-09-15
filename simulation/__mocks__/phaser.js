@@ -1,15 +1,4 @@
-const mockLayer = {
-  setCollision: jest.fn(),
-  destroy: jest.fn(),
-};
-
-const mockMap = {
-  addTilesetImage: jest.fn(),
-  createLayer: jest.fn(() => mockLayer),
-  setCollision: jest.fn(),
-};
-
-const mockSceneSystems = {
+const createMockSceneSystems = () => ({
   add: {
     graphics: jest.fn(() => ({
       fillStyle: jest.fn().mockReturnThis(),
@@ -17,10 +6,17 @@ const mockSceneSystems = {
       generateTexture: jest.fn().mockReturnThis(),
       destroy: jest.fn(),
     })),
-    rectangle: jest.fn(),
+    rectangle: jest.fn(() => ({
+      setOrigin: jest.fn().mockReturnThis(),
+    })),
+    text: jest.fn(),
   },
   make: {
-    tilemap: jest.fn(() => mockMap),
+    tilemap: jest.fn(() => ({
+      addTilesetImage: jest.fn(),
+      createLayer: jest.fn(() => ({ setCollision: jest.fn(), destroy: jest.fn() })),
+      setCollision: jest.fn(),
+    })),
   },
   physics: {
     add: {
@@ -40,6 +36,7 @@ const mockSceneSystems = {
         setCollideWorldBounds: jest.fn(),
         setPosition: jest.fn(),
         setVelocity: jest.fn(),
+        setDepth: jest.fn(),
         body: {
             getBounds: jest.fn(() => ({ bottom: 0})),
             touching: {},
@@ -79,28 +76,18 @@ const mockSceneSystems = {
     create: jest.fn(),
     generateFrameNumbers: jest.fn(),
   }
-};
+});
 
 const Scene = jest.fn().mockImplementation(function() {
-  Object.assign(this, mockSceneSystems);
+  // Assign a fresh set of mocks for each scene instance
+  Object.assign(this, createMockSceneSystems());
 });
 
 module.exports = {
   Scene: Scene,
-  Scale: {
-    RESIZE: 'RESIZE',
-    CENTER_BOTH: 'CENTER_BOTH',
-    FIT: 'FIT',
-  },
+  Scale: { FIT: 'FIT', CENTER_BOTH: 'CENTER_BOTH' },
   AUTO: 'AUTO',
-  Input: {
-    Keyboard: {
-      KeyCodes: {
-        SHIFT: 'SHIFT',
-      },
-      JustDown: jest.fn(),
-    },
-  },
+  Input: { Keyboard: { KeyCodes: { SHIFT: 'SHIFT' }, JustDown: jest.fn() } },
   Math: {
     Between: jest.fn((min) => min),
     Clamp: jest.fn((value, min, max) => Math.max(min, Math.min(value, max))),
@@ -110,15 +97,7 @@ module.exports = {
         this.clone = () => new module.exports.Math.Vector2(this.x, this.y);
         this.scale = jest.fn().mockReturnThis();
     }),
-    Distance: {
-        BetweenPoints: jest.fn(() => 100),
-    }
+    Distance: { BetweenPoints: jest.fn(() => 100) }
   },
-  Geom: {
-    Line: jest.fn().mockImplementation(function() {
-        return {
-            getPoints: jest.fn(() => [])
-        }
-    })
-  }
+  Geom: { Line: jest.fn(() => ({ getPoints: jest.fn(() => []) })) }
 };
