@@ -1,5 +1,7 @@
 import * as Phaser from 'phaser';
-import { bigStaircase, floatingIsland, emptyChasm, bridge, overhang } from './structures';
+import Room from './Room';
+import structures from './structures';
+import TraversalValidator from './TraversalValidator';
 
 export default class LevelGenerator {
   constructor(scene) {
@@ -40,15 +42,22 @@ export default class LevelGenerator {
     // Right Wall (with opening)
     const rightWallTopHeight = height / 2 - openingSize / 2;
     const rightWallBottomHeight = height / 2 - openingSize / 2;
-    const rightWallTop = this.scene.add.rectangle(width - wallThickness / 2, rightWallTopHeight / 2, wallThickness, rightWallTopHeight, 0x000000);
+    const rightWallTop = this.scene.add.rectangle(width - wallThickness /2, rightWallTopHeight / 2, wallThickness, rightWallTopHeight, 0x000000);
     const rightWallBottom = this.scene.add.rectangle(width - wallThickness / 2, height - rightWallBottomHeight / 2, wallThickness, rightWallBottomHeight, 0x000000);
     platformsGroup.add(rightWallTop);
     platformsGroup.add(rightWallBottom);
 
-    // Add a few structures to the room
-    bridge(this.scene, platformsGroup);
-    floatingIsland(this.scene, platformsGroup);
-    overhang(this.scene, platformsGroup);
+    // Generate a traversable room
+    let room;
+    let isValid = false;
+    while (!isValid) {
+      room = new Room(20, 15, structures);
+      room.generateLayout();
+      const validator = new TraversalValidator(room);
+      isValid = validator.isTraversable();
+    }
+
+    room.render(this.scene, platformsGroup);
 
     platformsGroup.refresh();
   }

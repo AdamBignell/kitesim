@@ -1,6 +1,9 @@
 import * as Phaser from 'phaser';
+import Prefab from './Prefab';
 
-export function bigStaircase(scene, platformsGroup) {
+// --- Structure Generation Functions ---
+
+function bigStaircase(scene, platformsGroup) {
   const { width, height } = scene.scale;
   const stepWidth = 100;
   const stepHeight = 40;
@@ -14,7 +17,7 @@ export function bigStaircase(scene, platformsGroup) {
   }
 }
 
-export function floatingIsland(scene, platformsGroup) {
+function floatingIsland(scene, platformsGroup) {
   const { width, height } = scene.scale;
   const islandWidth = 200;
   const islandHeight = 30;
@@ -25,7 +28,7 @@ export function floatingIsland(scene, platformsGroup) {
   platformsGroup.add(island);
 }
 
-export function emptyChasm(scene, platformsGroup) {
+function emptyChasm(scene, platformsGroup) {
   const { width, height } = scene.scale;
   const chasmWidth = 200;
   const floorHeight = 20;
@@ -40,7 +43,7 @@ export function emptyChasm(scene, platformsGroup) {
   platformsGroup.add(rightPlatform);
 }
 
-export function bridge(scene, platformsGroup) {
+function bridge(scene, platformsGroup) {
   const { width } = scene.scale;
   const segmentWidth = 50;
   const numSegments = 6;
@@ -55,7 +58,7 @@ export function bridge(scene, platformsGroup) {
   }
 }
 
-export function overhang(scene, platformsGroup) {
+function overhang(scene, platformsGroup) {
   const { width, height } = scene.scale;
   const overhangWidth = 200;
   const overhangHeight = 20;
@@ -66,9 +69,7 @@ export function overhang(scene, platformsGroup) {
   platformsGroup.add(overhang);
 }
 
-// --- New Structures Batch 1 ---
-
-export function singleSmallPlatform(scene, platformsGroup) {
+function singleSmallPlatform(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const y = Math.random() * height;
@@ -76,7 +77,7 @@ export function singleSmallPlatform(scene, platformsGroup) {
     platformsGroup.add(platform);
 }
 
-export function singleMediumPlatform(scene, platformsGroup) {
+function singleMediumPlatform(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const y = Math.random() * height;
@@ -84,7 +85,7 @@ export function singleMediumPlatform(scene, platformsGroup) {
     platformsGroup.add(platform);
 }
 
-export function singleLargePlatform(scene, platformsGroup) {
+function singleLargePlatform(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const y = Math.random() * height;
@@ -92,7 +93,7 @@ export function singleLargePlatform(scene, platformsGroup) {
     platformsGroup.add(platform);
 }
 
-export function verticalStack(scene, platformsGroup) {
+function verticalStack(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const startY = height / 2;
@@ -102,7 +103,7 @@ export function verticalStack(scene, platformsGroup) {
     }
 }
 
-export function horizontalRow(scene, platformsGroup) {
+function horizontalRow(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const y = Math.random() * height;
     const startX = width / 4;
@@ -112,7 +113,7 @@ export function horizontalRow(scene, platformsGroup) {
     }
 }
 
-export function scatteredSmallPlatforms(scene, platformsGroup) {
+function scatteredSmallPlatforms(scene, platformsGroup) {
     const { width, height } = scene.scale;
     for (let i = 0; i < 5; i++) {
         const x = Math.random() * width;
@@ -122,7 +123,7 @@ export function scatteredSmallPlatforms(scene, platformsGroup) {
     }
 }
 
-export function steppingStones(scene, platformsGroup) {
+function steppingStones(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const y = height - 50;
     const startX = width / 2 - 150;
@@ -132,7 +133,7 @@ export function steppingStones(scene, platformsGroup) {
     }
 }
 
-export function wideGap(scene, platformsGroup) {
+function wideGap(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const y = height - 100;
     const leftPlatform = scene.add.rectangle(width / 4, y, width / 2, 20, 0x000000);
@@ -141,7 +142,7 @@ export function wideGap(scene, platformsGroup) {
     platformsGroup.add(rightPlatform);
 }
 
-export function vShape(scene, platformsGroup) {
+function vShape(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -153,7 +154,7 @@ export function vShape(scene, platformsGroup) {
     }
 }
 
-export function uShape(scene, platformsGroup) {
+function uShape(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width / 2;
     const bottomY = height - 50;
@@ -168,7 +169,7 @@ export function uShape(scene, platformsGroup) {
     platformsGroup.add(right);
 }
 
-export function zigZag(scene, platformsGroup) {
+function zigZag(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const startY = height - 50;
     let x = width / 2 - 100;
@@ -179,7 +180,7 @@ export function zigZag(scene, platformsGroup) {
     }
 }
 
-export function pyramid(scene, platformsGroup) {
+function pyramid(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const bottomY = height - 20;
     const platformWidth = 40;
@@ -194,7 +195,7 @@ export function pyramid(scene, platformsGroup) {
     }
 }
 
-export function wallForJumping(scene, platformsGroup) {
+function wallForJumping(scene, platformsGroup) {
     const { height } = scene.scale;
     const x = 100;
     const y = height / 2;
@@ -202,7 +203,7 @@ export function wallForJumping(scene, platformsGroup) {
     platformsGroup.add(wall);
 }
 
-export function floatingBlockWithHole(scene, platformsGroup) {
+function floatingBlockWithHole(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width/2;
     const centerY = height/2;
@@ -218,15 +219,13 @@ export function floatingBlockWithHole(scene, platformsGroup) {
     platformsGroup.add(right);
 }
 
-export function highRoof(scene, platformsGroup) {
+function highRoof(scene, platformsGroup) {
     const { width } = scene.scale;
     const roof = scene.add.rectangle(width/2, 50, width/2, 20, 0x000000);
     platformsGroup.add(roof);
 }
 
-// --- New Structures Batch 2 ---
-
-export function archway(scene, platformsGroup) {
+function archway(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width / 2;
     const bottomY = height - 100;
@@ -242,7 +241,7 @@ export function archway(scene, platformsGroup) {
     platformsGroup.add(top);
 }
 
-export function ruinedWall(scene, platformsGroup) {
+function ruinedWall(scene, platformsGroup) {
     const { height } = scene.scale;
     const x = Math.random() * scene.scale.width;
     for(let i=0; i<4; i++) {
@@ -251,7 +250,7 @@ export function ruinedWall(scene, platformsGroup) {
     }
 }
 
-export function smallHut(scene, platformsGroup) {
+function smallHut(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 50;
@@ -263,7 +262,7 @@ export function smallHut(scene, platformsGroup) {
     platformsGroup.add(roof);
 }
 
-export function tower(scene, platformsGroup) {
+function tower(scene, platformsGroup) {
     const { height } = scene.scale;
     const x = scene.scale.width - 100;
     const towerHeight = 300;
@@ -276,7 +275,7 @@ export function tower(scene, platformsGroup) {
     }
 }
 
-export function balcony(scene, platformsGroup) {
+function balcony(scene, platformsGroup) {
     const { height } = scene.scale;
     const x = 100;
     const y = height / 2;
@@ -286,7 +285,7 @@ export function balcony(scene, platformsGroup) {
     platformsGroup.add(floor);
 }
 
-export function chimney(scene, platformsGroup) {
+function chimney(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const shaftHeight = height;
@@ -298,7 +297,7 @@ export function chimney(scene, platformsGroup) {
     platformsGroup.add(right);
 }
 
-export function pipework(scene, platformsGroup) {
+function pipework(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x1 = width * 1/4;
     const y1 = height * 1/4;
@@ -314,7 +313,7 @@ export function pipework(scene, platformsGroup) {
     platformsGroup.add(pipe4);
 }
 
-export function crystalCluster(scene, platformsGroup) {
+function crystalCluster(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -327,7 +326,7 @@ export function crystalCluster(scene, platformsGroup) {
     }
 }
 
-export function tree(scene, platformsGroup) {
+function tree(scene, platformsGroup) {
     const { height } = scene.scale;
     const x = scene.scale.width / 2;
     const trunkHeight = 150;
@@ -337,7 +336,7 @@ export function tree(scene, platformsGroup) {
     platformsGroup.add(canopy);
 }
 
-export function cloudPlatform(scene, platformsGroup) {
+function cloudPlatform(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const y = height / 4;
@@ -347,7 +346,7 @@ export function cloudPlatform(scene, platformsGroup) {
     }
 }
 
-export function floorSpikes(scene, platformsGroup) {
+function floorSpikes(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const startX = width / 2 - 100;
     for (let i=0; i<10; i++) {
@@ -356,7 +355,7 @@ export function floorSpikes(scene, platformsGroup) {
     }
 }
 
-export function ceilingSpikes(scene, platformsGroup) {
+function ceilingSpikes(scene, platformsGroup) {
     const { width } = scene.scale;
     const startX = width / 2 - 100;
     for (let i=0; i<10; i++) {
@@ -365,13 +364,13 @@ export function ceilingSpikes(scene, platformsGroup) {
     }
 }
 
-export function lavaPit(scene, platformsGroup) {
+function lavaPit(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const pit = scene.add.rectangle(width/2, height - 10, width/2, 20, 0xff0000);
     platformsGroup.add(pit);
 }
 
-export function crusher(scene, platformsGroup) {
+function crusher(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height / 2;
@@ -381,16 +380,14 @@ export function crusher(scene, platformsGroup) {
     platformsGroup.add(bottom);
 }
 
-// --- New Structures Batch 3 ---
-
-export function pillar(scene, platformsGroup) {
+function pillar(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const pillar = scene.add.rectangle(x, height/2, 30, height, 0x000000);
     platformsGroup.add(pillar);
 }
 
-export function seriesOfPillars(scene, platformsGroup) {
+function seriesOfPillars(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const startX = width / 4;
     for (let i = 0; i < 4; i++) {
@@ -399,21 +396,21 @@ export function seriesOfPillars(scene, platformsGroup) {
     }
 }
 
-export function stalactite(scene, platformsGroup) {
+function stalactite(scene, platformsGroup) {
     const { width } = scene.scale;
     const x = Math.random() * width;
     const stalactite = scene.add.triangle(x, 0, 0, 0, 15, 50, 30, 0, 0x000000);
     platformsGroup.add(stalactite);
 }
 
-export function stalagmite(scene, platformsGroup) {
+function stalagmite(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const stalagmite = scene.add.triangle(x, height, 0, 50, 15, 0, 30, 50, 0x000000);
     platformsGroup.add(stalagmite);
 }
 
-export function cage(scene, platformsGroup) {
+function cage(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const centerX = width/2;
     const centerY = height/2;
@@ -427,7 +424,7 @@ export function cage(scene, platformsGroup) {
     }
 }
 
-export function throne(scene, platformsGroup) {
+function throne(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 50;
@@ -437,7 +434,7 @@ export function throne(scene, platformsGroup) {
     platformsGroup.add(back);
 }
 
-export function simpleHouse(scene, platformsGroup) {
+function simpleHouse(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 80;
@@ -447,7 +444,7 @@ export function simpleHouse(scene, platformsGroup) {
     platformsGroup.add(roof);
 }
 
-export function waterfall(scene, platformsGroup) {
+function waterfall(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     for (let i = 0; i < 15; i++) {
@@ -456,7 +453,7 @@ export function waterfall(scene, platformsGroup) {
     }
 }
 
-export function canyon(scene, platformsGroup) {
+function canyon(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const gap = 200;
     const left = scene.add.rectangle(width/4, height/2, width/2 - gap/2, height, 0x000000);
@@ -465,7 +462,7 @@ export function canyon(scene, platformsGroup) {
     platformsGroup.add(right);
 }
 
-export function templeEntrance(scene, platformsGroup) {
+function templeEntrance(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 100;
@@ -479,7 +476,7 @@ export function templeEntrance(scene, platformsGroup) {
     platformsGroup.add(lintel);
 }
 
-export function bunker(scene, platformsGroup) {
+function bunker(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 40;
@@ -487,7 +484,7 @@ export function bunker(scene, platformsGroup) {
     platformsGroup.add(bunker);
 }
 
-export function smallAlcove(scene, platformsGroup) {
+function smallAlcove(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = width / 2;
     const y = height - 50;
@@ -497,7 +494,7 @@ export function smallAlcove(scene, platformsGroup) {
     platformsGroup.add(back);
 }
 
-export function sawblade(scene, platformsGroup) {
+function sawblade(scene, platformsGroup) {
     const { width, height } = scene.scale;
     const x = Math.random() * width;
     const y = Math.random() * height;
@@ -505,7 +502,7 @@ export function sawblade(scene, platformsGroup) {
     platformsGroup.add(blade);
 }
 
-export function crumblingBridge(scene, platformsGroup) {
+function crumblingBridge(scene, platformsGroup) {
     const { width } = scene.scale;
     const segmentWidth = 50;
     const numSegments = 8;
@@ -521,3 +518,58 @@ export function crumblingBridge(scene, platformsGroup) {
         }
     }
 }
+
+// --- Prefab Definitions ---
+
+const structures = [
+  new Prefab('bigStaircase', bigStaircase, { width: 10, height: 5 }, [{ position: 'bottom', type: 'door' }, { position: 'top', type: 'door' }]),
+  new Prefab('floatingIsland', floatingIsland, { width: 4, height: 2 }, []),
+  new Prefab('emptyChasm', emptyChasm, { width: 20, height: 1 }, [{ position: 'left', type: 'door' }, { position: 'right', type: 'door' }]),
+  new Prefab('bridge', bridge, { width: 12, height: 1 }, [{ position: 'left', type: 'hallway' }, { position: 'right', type: 'hallway' }]),
+  new Prefab('overhang', overhang, { width: 4, height: 1 }, [{ position: 'left', type: 'platform' }, { position: 'right', type: 'platform' }]),
+  new Prefab('singleSmallPlatform', singleSmallPlatform, { width: 1, height: 1 }, []),
+  new Prefab('singleMediumPlatform', singleMediumPlatform, { width: 2, height: 1 }, []),
+  new Prefab('singleLargePlatform', singleLargePlatform, { width: 4, height: 1 }, []),
+  new Prefab('verticalStack', verticalStack, { width: 2, height: 5 }, [{ position: 'bottom', type: 'door' }, { position: 'top', type: 'door' }]),
+  new Prefab('horizontalRow', horizontalRow, { width: 8, height: 1 }, [{ position: 'left', type: 'hallway' }, { position: 'right', type: 'hallway' }]),
+  new Prefab('scatteredSmallPlatforms', scatteredSmallPlatforms, { width: 10, height: 10 }, []),
+  new Prefab('steppingStones', steppingStones, { width: 6, height: 2 }, [{ position: 'left', type: 'door' }, { position: 'right', type: 'door' }]),
+  new Prefab('wideGap', wideGap, { width: 20, height: 1 }, [{ position: 'left', type: 'door' }, { position: 'right', type: 'door' }]),
+  new Prefab('vShape', vShape, { width: 5, height: 5 }, [{ position: 'top', type: 'door' }]),
+  new Prefab('uShape', uShape, { width: 4, height: 3 }, [{ position: 'top', type: 'door' }]),
+  new Prefab('zigZag', zigZag, { width: 5, height: 6 }, [{ position: 'bottom', type: 'door' }, { position: 'top', type: 'door' }]),
+  new Prefab('pyramid', pyramid, { width: 5, height: 5 }, [{ position: 'bottom', type: 'door' }]),
+  new Prefab('wallForJumping', wallForJumping, { width: 1, height: 5 }, [{ position: 'left', type: 'wall' }, { position: 'right', type: 'wall' }]),
+  new Prefab('floatingBlockWithHole', floatingBlockWithHole, { width: 4, height: 4 }, [{ position: 'all', type: 'passage' }]),
+  new Prefab('highRoof', highRoof, { width: 10, height: 1 }, [{ position: 'bottom', type: 'ceiling' }]),
+  new Prefab('archway', archway, { width: 3, height: 4 }, [{ position: 'bottom', type: 'door' }]),
+  new Prefab('ruinedWall', ruinedWall, { width: 2, height: 4 }, []),
+  new Prefab('smallHut', smallHut, { width: 3, height: 3 }, [{ position: 'bottom', type: 'door' }]),
+  new Prefab('tower', tower, { width: 3, height: 8 }, [{ position: 'left', type: 'wall' }, { position: 'right', type: 'wall' }]),
+  new Prefab('balcony', balcony, { width: 3, height: 5 }, [{ position: 'left', type: 'wall' }]),
+  new Prefab('chimney', chimney, { width: 3, height: 10 }, [{ position: 'top', type: 'opening' }]),
+  new Prefab('pipework', pipework, { width: 8, height: 8 }, []),
+  new Prefab('crystalCluster', crystalCluster, { width: 3, height: 3 }, []),
+  new Prefab('tree', tree, { width: 3, height: 5 }, []),
+  new Prefab('cloudPlatform', cloudPlatform, { width: 3, height: 1 }, []),
+  new Prefab('floorSpikes', floorSpikes, { width: 5, height: 1 }, [{ position: 'bottom', type: 'hazard' }]),
+  new Prefab('ceilingSpikes', ceilingSpikes, { width: 5, height: 1 }, [{ position: 'top', type: 'hazard' }]),
+  new Prefab('lavaPit', lavaPit, { width: 10, height: 1 }, [{ position: 'bottom', type: 'hazard' }]),
+  new Prefab('crusher', crusher, { width: 3, height: 4 }, [{ position: 'top', type: 'hazard' }, { position: 'bottom', type: 'hazard' }]),
+  new Prefab('pillar', pillar, { width: 1, height: 10 }, []),
+  new Prefab('seriesOfPillars', seriesOfPillars, { width: 10, height: 10 }, []),
+  new Prefab('stalactite', stalactite, { width: 1, height: 2 }, [{ position: 'top', type: 'hazard' }]),
+  new Prefab('stalagmite', stalagmite, { width: 1, height: 2 }, [{ position: 'bottom', type: 'hazard' }]),
+  new Prefab('cage', cage, { width: 5, height: 5 }, [{ position: 'all', type: 'enclosure' }]),
+  new Prefab('throne', throne, { width: 2, height: 2 }, [{ position: 'bottom', type: 'seat' }]),
+  new Prefab('simpleHouse', simpleHouse, { width: 4, height: 4 }, [{ position: 'bottom', type: 'door' }]),
+  new Prefab('waterfall', waterfall, { width: 2, height: 10 }, []),
+  new Prefab('canyon', canyon, { width: 20, height: 10 }, [{ position: 'left', type: 'wall' }, { position: 'right', type: 'wall' }]),
+  new Prefab('templeEntrance', templeEntrance, { width: 7, height: 4 }, [{ position: 'bottom', type: 'door' }]),
+  new Prefab('bunker', bunker, { width: 5, height: 2 }, [{ position: 'top', type: 'door' }]),
+  new Prefab('smallAlcove', smallAlcove, { width: 5, height: 2 }, [{ position: 'bottom', type: 'opening' }]),
+  new Prefab('sawblade', sawblade, { width: 2, height: 2 }, [{ position: 'all', type: 'hazard' }]),
+  new Prefab('crumblingBridge', crumblingBridge, { width: 10, height: 1 }, [{ position: 'left', type: 'hallway' }, { position: 'right', type: 'hallway' }]),
+];
+
+export default structures;
