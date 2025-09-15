@@ -192,3 +192,12 @@ function createHighRoof() {
     return new Structure(width, height, grid, snapPoints);
 }
 export const highRoof = createHighRoof();
+
+function createFiller() {
+    const width = 1;
+    const height = 1;
+    const grid = new Grid(width, height, 1);
+    const snapPoints = new Map();
+    return new Structure(width, height, grid, snapPoints);
+}
+export const filler = createFiller();

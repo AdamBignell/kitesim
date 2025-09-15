@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import Grid from './generation/Grid';
 import * as Structures from './generation/structures';
+import { createFloor } from './generation/MegaStructure';
 import Physics from './generation/Physics';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 
@@ -17,7 +18,7 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    this.placeStructures(chunkGrid, placedStructures);
+    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize);
 
     for (let y = 0; y < chunkSize; y++) {
       for (let x = 0; x < chunkSize; x++) {
@@ -37,46 +38,45 @@ export default class LevelGenerator {
     return newPlatforms;
   }
 
-  placeStructures(chunkGrid, placedStructures) {
-    // Place the first structure randomly
-    const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
-    const x = Math.floor(Math.random() * (chunkGrid.width - structure.width));
-    const y = Math.floor(Math.random() * (chunkGrid.height - structure.height));
-    this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
+  placeStructures(chunkGrid, placedStructures, width, height) {
+    const floor = createFloor(width, { height: height });
+    this.placeStructure(chunkGrid, { structure: floor, x: 0, y: 0 }, placedStructures);
 
+    // Fill in below the floor to make it solid
+    for (let x = 0; x < width; x++) {
+      let firstTile = -1;
+      for (let y = 0; y < height; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          firstTile = y;
+          break;
+        }
+      }
 
-    for (let i = 0; i < 10; i++) { // Attempt to place a few structures
-      this.tryPlaceConnectedStructure(chunkGrid, placedStructures);
+      if (firstTile !== -1) {
+        for (let y = firstTile; y < height; y++) {
+          this.placeStructure(chunkGrid, { structure: Structures.filler, x, y }, placedStructures);
+        }
+      }
     }
-  }
 
-  tryPlaceConnectedStructure(chunkGrid, placedStructures) {
-    if (placedStructures.length === 0) return;
-    const existing = placedStructures[Math.floor(Math.random() * placedStructures.length)];
-    const newStructure = this.structures[Math.floor(Math.random() * this.structures.length)];
+    // Add some features on top of the floor
+    for (let i = 0; i < 10; i++) {
+      const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
+      const x = Math.floor(Math.random() * (width - structure.width));
+      const y = Math.floor(Math.random() * (height - structure.height));
 
-    const existingSnapPoints = Array.from(existing.structure.snapPoints.entries());
-    const newSnapPoints = Array.from(newStructure.snapPoints.entries());
+      // Ensure the structure is placed on top of the floor
+      let isOnFloor = false;
+      for(let sx=0; sx<structure.width; sx++) {
+          if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
+              isOnFloor = true;
+              break;
+          }
+      }
 
-    if (existingSnapPoints.length === 0 || newSnapPoints.length === 0) return;
-
-    const [existingType, existingPoints] = existingSnapPoints[Math.floor(Math.random() * existingSnapPoints.length)];
-    const compatibleType = this.getCompatibleSnapPointType(existingType);
-
-    const compatibleNewPoints = newSnapPoints.find(([type]) => type === compatibleType);
-    if (!compatibleNewPoints) return;
-
-    const existingPoint = existingPoints[Math.floor(Math.random() * existingPoints.length)];
-    const newPoint = compatibleNewPoints[1][Math.floor(Math.random() * compatibleNewPoints[1].length)];
-
-    const newX = existing.x + existingPoint.x - newPoint.x;
-    const newY = existing.y + existingPoint.y - newPoint.y;
-
-    const distance = Math.abs(newX - (existing.x + existingPoint.x));
-    const height = Math.abs(newY - (existing.y + existingPoint.y));
-
-    if (this.physics.canTraverse(distance, height) && this.canPlace(chunkGrid, newStructure, newX, newY, placedStructures)) {
-      this.placeStructure(chunkGrid, { structure: newStructure, x: newX, y: newY }, placedStructures);
+      if (isOnFloor && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
+        this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
+      }
     }
   }
 
@@ -106,15 +106,6 @@ export default class LevelGenerator {
           chunkGrid.setTile(placed.x + sx, placed.y + sy, 1);
         }
       }
-    }
-  }
-
-  getCompatibleSnapPointType(type) {
-    switch (type) {
-      case 'top': return 'bottom';
-      case 'bottom': return 'top';
-      case 'left': return 'right';
-      case 'right': return 'left';
     }
   }
 }
