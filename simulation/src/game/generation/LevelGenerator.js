@@ -1,11 +1,11 @@
 import * as Phaser from 'phaser';
+import { bigStaircase, floatingIsland, emptyChasm, bridge, overhang } from './structures';
 
-export default class LevelGenerator { constructor(scene) { this.scene = scene; }
-/**
+export default class LevelGenerator {
+  constructor(scene) {
+    this.scene = scene;
+  }
 
-Generates a series of traversable platforms.
-@param {Phaser.Physics.Arcade.StaticGroup} platformsGroup - The group to add platforms to.
-@param {number} numPlatforms - The total number of platforms to generate. */
   generate(platformsGroup) {
     const { width, height } = this.scene.scale;
     const wallThickness = 20;
@@ -45,22 +45,10 @@ Generates a series of traversable platforms.
     platformsGroup.add(rightWallTop);
     platformsGroup.add(rightWallBottom);
 
-    // --- Add Internal Platforms for Traversal ---
-
-    // Central starting platform
-    const centerPlatform = this.scene.add.rectangle(width / 2, height - 100, 150, 20, 0x000000);
-    platformsGroup.add(centerPlatform);
-
-    // Platforms to reach side openings
-    const leftMidPlatform = this.scene.add.rectangle(150, height / 2 + 50, 100, 20, 0x000000);
-    const rightMidPlatform = this.scene.add.rectangle(width - 150, height / 2 + 50, 100, 20, 0x000000);
-    platformsGroup.add(leftMidPlatform);
-    platformsGroup.add(rightMidPlatform);
-
-    // Platform to reach top opening
-    const topPlatform = this.scene.add.rectangle(width / 2, 150, 100, 20, 0x000000);
-    platformsGroup.add(topPlatform);
-
+    // Add a few structures to the room
+    bridge(this.scene, platformsGroup);
+    floatingIsland(this.scene, platformsGroup);
+    overhang(this.scene, platformsGroup);
 
     platformsGroup.refresh();
   }

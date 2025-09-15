@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import LevelGenerator from './LevelGenerator'; // Add this at the top
+import LevelGenerator from './generation/LevelGenerator'; // Add this at the top
 
 export default class GameScene extends Phaser.Scene {
   constructor() {

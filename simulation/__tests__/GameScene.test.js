@@ -1,9 +1,9 @@
 import GameScene from '../src/game/GameScene';
 import * as Phaser from 'phaser';
-import LevelGenerator from '../src/game/LevelGenerator';
+import LevelGenerator from '../src/game/generation/LevelGenerator';
 
 // The phaser module is mocked in jest.config.js
-jest.mock('../src/game/LevelGenerator');
+jest.mock('../src/game/generation/LevelGenerator');
 
 describe('GameScene', () => {
   let scene;
