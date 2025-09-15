@@ -84,12 +84,16 @@ class LevelGenerator {
      */
     generate() {
         console.log("Starting level generation...");
+        // Reset state for this generation pass
+        this.preciseStartPosition = null;
+        this.endGoalPosition = null;
+
         const levelData = new LevelData(this.config.width, this.config.height, this.config.tileSize);
 
         // STAGE 1 & 2: Generate and validate the macro-structure
         const macroGraph = this._generateMacroStructure(levelData);
-        if (!macroGraph) {
-             console.error("Failed to generate a macro-structure. Retrying...");
+        if (!macroGraph || Object.keys(macroGraph.nodes).length < 2) {
+             console.error("Failed to generate a valid macro-structure. Retrying...");
              return this.generate();
         }
         const { path, isSolvable } = this._validatePathWithAStar(macroGraph);
@@ -110,17 +114,24 @@ class LevelGenerator {
         // STAGE 6: Populate entities
         this._populateEntities(levelData, rhythmSequence);
 
-        // Set start position for the player
-        if (macroGraph.startNode) {
+        // Set start position based on the first chunk's entry point
+        if (this.preciseStartPosition) {
             levelData.startPosition = {
-                x: macroGraph.startNode.x * this.config.tileSize,
-                y: macroGraph.startNode.y * this.config.tileSize
+                x: this.preciseStartPosition.x * this.config.tileSize + this.config.tileSize / 2,
+                y: (this.preciseStartPosition.y - 2) * this.config.tileSize
             };
         } else {
-            // Fallback start position
+            // Fallback start position if something went wrong
             levelData.startPosition = { x: 100, y: levelData.height * this.config.tileSize - 100 };
         }
 
+        // Set end position based on the last chunk's exit point
+        if (this.endGoalPosition) {
+            levelData.endPosition = {
+                x: this.endGoalPosition.x * this.config.tileSize,
+                y: this.endGoalPosition.y * this.config.tileSize
+            };
+        }
 
         console.log("Level generation complete.");
         return levelData;
@@ -138,8 +149,8 @@ class LevelGenerator {
 
         const width = levelData.width;
         const height = levelData.height;
-        const numZones = 15; // The number of nodes/zones to create
-        const turnChance = 0.25; // 25% chance to change direction
+        const numZones = 15;
+        const turnChance = 0.25;
 
         const graph = { nodes: {}, startNode: null, endNode: null };
         let grid = Array(height).fill(0).map(() => Array(width).fill(false));
@@ -151,29 +162,16 @@ class LevelGenerator {
         };
 
         const directions = {
-            'N': { x: 0, y: -1 },
-            'S': { x: 0, y: 1 },
-            'E': { x: 1, y: 0 },
-            'W': { x: -1, y: 0 }
+            'N': { x: 0, y: -1 }, 'S': { x: 0, y: 1 }, 'E': { x: 1, y: 0 }, 'W': { x: -1, y: 0 }
         };
         const dirKeys = Object.keys(directions);
-
         let previousNode = null;
 
         for (let i = 0; i < numZones; i++) {
-            // Create a node at the current walker position
-            const node = {
-                id: i,
-                x: walker.x,
-                y: walker.y,
-                neighbors: []
-            };
-
+            const node = { id: i, x: walker.x, y: walker.y, neighbors: [] };
             graph.nodes[i] = node;
-            if (i === 0) {
-                graph.startNode = node;
-            }
-            graph.endNode = node; // The last node created is the end node
+            if (i === 0) graph.startNode = node;
+            graph.endNode = node;
 
             if (previousNode) {
                 node.neighbors.push(previousNode.id);
@@ -182,36 +180,38 @@ class LevelGenerator {
             previousNode = node;
             grid[walker.y][walker.x] = true;
 
-            // Move the walker
+            // Move the walker, with a limit to prevent infinite loops
             let moved = false;
-            while(!moved) {
-                // Decide direction
+            let tries = 0;
+            while (!moved && tries < 50) {
                 if (Math.random() < turnChance) {
                     walker.dir = dirKeys[Math.floor(Math.random() * dirKeys.length)];
                 }
 
-                // Move multiple steps to create space between nodes
                 const moveAmount = Math.floor(Math.random() * 10) + 5;
                 let nx = walker.x;
                 let ny = walker.y;
-                for(let s = 0; s < moveAmount; s++) {
+                for (let s = 0; s < moveAmount; s++) {
                     nx += directions[walker.dir].x;
                     ny += directions[walker.dir].y;
                 }
 
-                // Check bounds and if the spot is taken
                 if (nx > 2 && nx < width - 2 && ny > 2 && ny < height - 2 && !grid[ny][nx]) {
                     walker.x = nx;
                     walker.y = ny;
                     moved = true;
                 } else {
-                    // if stuck, force a new direction
                     walker.dir = dirKeys[Math.floor(Math.random() * dirKeys.length)];
+                    tries++;
                 }
+            }
+
+            if (!moved) {
+                console.warn("Walker got stuck. Terminating macro structure generation early.");
+                break; // Exit the loop if the walker can't find a path
             }
         }
 
-        if (Object.keys(graph.nodes).length === 0) return null;
         return graph;
     }
 
@@ -329,7 +329,7 @@ class LevelGenerator {
         console.log("Stage 4: Instantiating and stitching chunks...");
         let lastChunkExit = null;
 
-        rhythmSequence.forEach(item => {
+        rhythmSequence.forEach((item, index) => {
             const { zone, tag } = item;
             const availableChunks = this.config.chunkLibrary[tag];
             if (!availableChunks || availableChunks.length === 0) {
@@ -348,7 +348,6 @@ class LevelGenerator {
 
                     if (gridY >= 0 && gridY < levelData.height && gridX >= 0 && gridX < levelData.width) {
                         if (chunk.data[y][x] === 1) {
-                            // Mark these tiles as static so CA doesn't affect them
                             levelData.grid[gridY][gridX] = { ...this.TILE_WALL, isStatic: true };
                         }
                     }
@@ -360,6 +359,11 @@ class LevelGenerator {
                 y: chunkStartY + chunk.entry.y
             };
 
+            // Capture the precise start position from the first chunk's entry
+            if (index === 0) {
+                this.preciseStartPosition = { ...currentChunkEntry };
+            }
+
             if (lastChunkExit) {
                 this._stitchPoints(levelData, lastChunkExit, currentChunkEntry);
             }
@@ -368,6 +372,11 @@ class LevelGenerator {
                 x: chunkStartX + chunk.exit.x,
                 y: chunkStartY + chunk.exit.y
             };
+
+            // Capture the end goal position from the last chunk's exit
+            if (index === rhythmSequence.length - 1) {
+                this.endGoalPosition = { ...lastChunkExit };
+            }
         });
     }
 
@@ -395,44 +404,144 @@ class LevelGenerator {
 
     _applyCellularAutomataFinish(levelData) {
         console.log("Stage 5: Applying Cellular Automata finishing pass...");
-        const iterations = 4;
-        const birthThreshold = 5;
-        const survivalThreshold = 4;
+        const initialSeedChance = 0.45;
+        const caIterations = 5;
+        const birthThreshold = 4;
+        const survivalThreshold = 3;
 
+        // 1. Seed empty space with noise
         for (let y = 0; y < levelData.height; y++) {
             for (let x = 0; x < levelData.width; x++) {
-                if (levelData.grid[y][x].type === 'EMPTY') {
-                    if (Math.random() < 0.45) {
-                        levelData.grid[y][x] = this.TILE_WALL;
-                    }
+                if (levelData.grid[y][x].type === 'EMPTY' && Math.random() < initialSeedChance) {
+                    levelData.grid[y][x] = this.TILE_WALL;
                 }
             }
         }
 
-        for (let i = 0; i < iterations; i++) {
-            let nextGrid = JSON.parse(JSON.stringify(levelData.grid));
-            for (let y = 1; y < levelData.height - 1; y++) {
-                for (let x = 1; x < levelData.width - 1; x++) {
-                    // *** THE FIX: Do not modify static tiles from chunks/stitching ***
-                    if (levelData.grid[y][x].isStatic) {
-                        continue;
+        // 2. Run CA simulation
+        for (let i = 0; i < caIterations; i++) {
+            levelData.grid = this._runCASimulationStep(levelData.grid, survivalThreshold, birthThreshold);
+        }
+
+        // 3. Remove all disconnected wall sections to clean up noise and floating blocks.
+        const allWallBlobs = this._getAllWallBlobs(levelData.grid);
+        let mainLandmassIndex = -1;
+
+        if (this.preciseStartPosition) {
+            const startX = this.preciseStartPosition.x;
+            const startY = this.preciseStartPosition.y;
+
+            // Find the blob that contains our starting platform. That's the main level.
+            for (let i = 0; i < allWallBlobs.length; i++) {
+                if (allWallBlobs[i].some(tile => tile.x === startX && tile.y === startY)) {
+                    mainLandmassIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (mainLandmassIndex !== -1) {
+            const mainLandmass = allWallBlobs.splice(mainLandmassIndex, 1)[0];
+            // Now allWallBlobs contains only the blobs to be removed.
+            allWallBlobs.forEach(blob => {
+                blob.forEach(tile => {
+                    levelData.grid[tile.y][tile.x] = { type: 'EMPTY', tileIndex: -1, collides: false };
+                });
+            });
+        }
+    }
+
+    /**
+     * Helper for Stage 5 cleanup: Finds all contiguous blobs of wall tiles.
+     */
+    _getAllWallBlobs(grid) {
+        const height = grid.length;
+        const width = grid[0].length;
+        const visited = Array(height).fill(null).map(() => Array(width).fill(false));
+        const allBlobs = [];
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (grid[y][x].type === 'WALL' && !visited[y][x]) {
+                    const newBlob = [];
+                    const queue = [{x, y}];
+                    visited[y][x] = true;
+
+                    while (queue.length > 0) {
+                        const current = queue.shift();
+                        newBlob.push(current);
+
+                        const neighbors = [{x:0,y:1}, {x:0,y:-1}, {x:1,y:0}, {x:-1,y:0}];
+                        for (const n of neighbors) {
+                            const nx = current.x + n.x;
+                            const ny = current.y + n.y;
+
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height &&
+                                !visited[ny][nx] && grid[ny][nx].type === 'WALL')
+                            {
+                                visited[ny][nx] = true;
+                                queue.push({x: nx, y: ny});
+                            }
+                        }
                     }
+                    allBlobs.push(newBlob);
+                }
+            }
+        }
+        return allBlobs;
+    }
 
-                    const neighbors = this._countAliveNeighbors(levelData.grid, x, y);
-                    const currentCell = levelData.grid[y][x];
 
-                    if (currentCell.type !== 'EMPTY') {
-                        if (neighbors < survivalThreshold) {
-                            nextGrid[y][x] = { type: 'EMPTY', tileIndex: -1, collides: false };
-                        }
-                    } else {
-                        if (neighbors > birthThreshold) {
-                            nextGrid[y][x] = this.TILE_WALL;
-                        }
+    /**
+     * Helper for Stage 5: Runs a single step of a Cellular Automata simulation.
+     */
+    _runCASimulationStep(grid, survivalThreshold, birthThreshold) {
+        const height = grid.length;
+        const width = grid[0].length;
+        let nextGrid = JSON.parse(JSON.stringify(grid));
+
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                if (grid[y][x].isStatic) continue;
+
+                const neighbors = this._countAliveNeighbors(grid, x, y);
+                const isWall = grid[y][x].type !== 'EMPTY';
+
+                if (isWall) {
+                    if (neighbors < survivalThreshold) {
+                        nextGrid[y][x] = { type: 'EMPTY', tileIndex: -1, collides: false };
+                    }
+                } else {
+                    if (neighbors > birthThreshold) {
+                        nextGrid[y][x] = this.TILE_WALL;
                     }
                 }
             }
-            levelData.grid = nextGrid;
+        }
+        return nextGrid;
+    }
+
+    /**
+     * Helper for Stage 5: A flood-fill algorithm to find all accessible empty tiles.
+     */
+    _floodFill(x, y, grid, visited) {
+        const queue = [{x, y}];
+        const width = grid[0].length;
+        const height = grid.length;
+
+        while(queue.length > 0) {
+            const {x: cx, y: cy} = queue.shift();
+
+            if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+            if (visited[cy][cx]) continue;
+            if (grid[cy][cx].type !== 'EMPTY') continue;
+
+            visited[cy][cx] = true;
+
+            queue.push({x: cx + 1, y: cy});
+            queue.push({x: cx - 1, y: cy});
+            queue.push({x: cx, y: cy + 1});
+            queue.push({x: cx, y: cy - 1});
         }
     }
 
