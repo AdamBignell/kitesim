@@ -162,7 +162,7 @@ export default class LevelGenerator {
 
           newPlatforms.create(platformX, platformY, null)
             .setSize(platformWidth, platformHeight)
-            .setVisible(false) // Set to false to see the physics bodies
+            .setVisible(true)
             .refreshBody();
         }
       }
