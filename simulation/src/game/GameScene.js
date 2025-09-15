@@ -47,9 +47,12 @@ export default class GameScene extends Phaser.Scene {
 
     // --- Player Setup ---
     // (Your existing player creation code)
-    this.player = this.physics.add.sprite(100, 100, 'idle');
+    this.player = this.physics.add.sprite(100, 450, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(false); // We'll manage world bounds manually now
+
+    // --- Camera ---
+    this.cameras.main.startFollow(this.player);
 
     // --- Initial World Generation ---
     this.updateActiveChunks();
