@@ -42,6 +42,17 @@ describe('GameScene', () => {
     scene.input = scene.sys.game.scene.scenes[0].input;
     scene.time = scene.sys.game.scene.scenes[0].time;
     scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn() } };
+    scene.add = {
+      graphics: jest.fn().mockReturnValue({
+        fillStyle: jest.fn(),
+        fillRect: jest.fn(),
+        generateTexture: jest.fn(),
+        destroy: jest.fn(),
+      }),
+      tileSprite: jest.fn().mockReturnValue({
+        setOrigin: jest.fn(),
+      }),
+    };
 
 
     LevelGenerator.mockClear();
