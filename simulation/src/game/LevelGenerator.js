@@ -15,25 +15,11 @@ export default class LevelGenerator {
 
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
     const chunkGrid = new Grid(chunkSize, chunkSize, 0);
-    const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
     this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
 
-    for (let y = 0; y < chunkSize; y++) {
-      for (let x = 0; x < chunkSize; x++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          const tileWorldX = (chunkX * chunkSize) + x;
-          const tileWorldY = (chunkY * chunkSize) + y;
-          const platformX = tileWorldX * tileSize + tileSize / 2;
-          const platformY = tileWorldY * tileSize + tileSize / 2;
-          newPlatforms.create(platformX, platformY, null)
-            .setSize(tileSize, tileSize)
-            .setVisible(true)
-            .refreshBody();
-        }
-      }
-    }
+    const newPlatforms = this.createOptimizedPlatforms(chunkGrid, chunkSize, tileSize, chunkX, chunkY);
 
     return newPlatforms;
   }
@@ -89,7 +75,6 @@ export default class LevelGenerator {
     const chunkX = 0;
     const chunkY = 0;
     const chunkGrid = new Grid(chunkSize, chunkSize, 0);
-    const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
     // First, place all the structures for the initial chunk
@@ -133,22 +118,57 @@ export default class LevelGenerator {
     }
 
     // Finally, create the platform bodies from the modified chunkGrid
+    const platforms = this.createOptimizedPlatforms(chunkGrid, chunkSize, tileSize, chunkX, chunkY);
+
+    return { platforms, spawnPoint };
+  }
+
+  createOptimizedPlatforms(chunkGrid, chunkSize, tileSize, chunkX, chunkY) {
+    const newPlatforms = this.scene.physics.add.staticGroup();
+    const visited = new Grid(chunkSize, chunkSize, 0);
+
     for (let y = 0; y < chunkSize; y++) {
-        for (let x = 0; x < chunkSize; x++) {
-            if (chunkGrid.getTile(x, y) === 1) {
-                const tileWorldX = (chunkX * chunkSize) + x;
-                const tileWorldY = (chunkY * chunkSize) + y;
-                const platformX = tileWorldX * tileSize + tileSize / 2;
-                const platformY = tileWorldY * tileSize + tileSize / 2;
-                newPlatforms.create(platformX, platformY, null)
-                    .setSize(tileSize, tileSize)
-                    .setVisible(true)
-                    .refreshBody();
+      for (let x = 0; x < chunkSize; x++) {
+        if (chunkGrid.getTile(x, y) === 1 && visited.getTile(x, y) === 0) {
+          let width = 1;
+          while (x + width < chunkSize && chunkGrid.getTile(x + width, y) === 1 && visited.getTile(x + width, y) === 0) {
+            width++;
+          }
+
+          let height = 1;
+          let canExtendDown = true;
+          while (y + height < chunkSize && canExtendDown) {
+            for (let i = 0; i < width; i++) {
+              if (chunkGrid.getTile(x + i, y + height) === 0 || visited.getTile(x + i, y + height) === 1) {
+                canExtendDown = false;
+                break;
+              }
             }
+            if (canExtendDown) {
+              height++;
+            }
+          }
+
+          for (let i = 0; i < height; i++) {
+            for (let j = 0; j < width; j++) {
+              visited.setTile(x + j, y + i, 1);
+            }
+          }
+
+          const platformWidth = width * tileSize;
+          const platformHeight = height * tileSize;
+          const platformX = (chunkX * chunkSize + x) * tileSize + platformWidth / 2;
+          const platformY = (chunkY * chunkSize + y) * tileSize + platformHeight / 2;
+
+          newPlatforms.create(platformX, platformY, null)
+            .setSize(platformWidth, platformHeight)
+            .setVisible(false) // Set to false to see the physics bodies
+            .refreshBody();
         }
+      }
     }
 
-    return { platforms: newPlatforms, spawnPoint };
+    return newPlatforms;
   }
 
   canPlace(chunkGrid, structure, x, y, placedStructures) {
