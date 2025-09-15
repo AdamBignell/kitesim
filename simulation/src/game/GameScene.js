@@ -1,10 +1,15 @@
 import * as Phaser from 'phaser';
 import LevelGenerator from './LevelGenerator';
+import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
     // The key 'default' is used to identify this scene.
     super('default');
+  }
+
+  init(data) {
+    this.levelGenerator = data.levelGenerator || new LevelGenerator(this, this.createPlayerCapabilitiesProfile());
   }
 
   preload() {
@@ -43,7 +48,10 @@ export default class GameScene extends Phaser.Scene {
     this.CHUNK_SIZE = 16; // Chunks are 16x16 tiles
     this.activeChunks = new Map();
     this.playerChunkCoord = { x: 0, y: 0 };
-    this.levelGenerator = new LevelGenerator(this);
+    if (!this.levelGenerator) {
+        this.levelGenerator = new LevelGenerator(this, this.createPlayerCapabilitiesProfile());
+    }
+
 
     // --- Player Setup ---
     // (Your existing player creation code)
@@ -131,6 +139,16 @@ export default class GameScene extends Phaser.Scene {
       callbackScope: this,
       loop: true
     });
+  }
+
+  createPlayerCapabilitiesProfile() {
+    return new PlayerCapabilitiesProfile({
+        runSpeed: this.WALK_SPEED,
+        gravity: this.physics.config.gravity.y,
+        jumpVelocity: -this.BASE_JUMP_FORCE,
+        wallSlideSpeed: this.WALL_SLIDE_SPEED,
+        wallJumpVelocity: new Phaser.Math.Vector2(this.WALL_JUMP_FORCE_X, this.WALL_JUMP_FORCE_Y),
+      });
   }
 
   togglePlayerControl(isUICall = false) {

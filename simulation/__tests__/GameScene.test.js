@@ -1,16 +1,45 @@
 import GameScene from '../src/game/GameScene';
 import * as Phaser from 'phaser';
-import LevelGenerator from '../src/game/generation/LevelGenerator';
+import LevelGenerator from '../src/game/LevelGenerator';
 
 // The phaser module is mocked in jest.config.js
-jest.mock('../src/game/generation/LevelGenerator');
+jest.mock('../src/game/LevelGenerator', () => {
+    return jest.fn().mockImplementation(() => {
+        return {
+            generateChunk: jest.fn().mockReturnValue({
+                destroy: jest.fn()
+            })
+        };
+    });
+});
 
 describe('GameScene', () => {
   let scene;
+  let levelGenerator;
 
   beforeEach(() => {
+    levelGenerator = new LevelGenerator();
     // Create a new instance of the scene before each test
     scene = new GameScene();
+    scene.sys = new Phaser.Scene().sys;
+    scene.init = GameScene.prototype.init.bind(scene);
+    scene.init({ levelGenerator });
+    // Manually add the methods that are part of the scene's lifecycle
+    scene.create = GameScene.prototype.create.bind(scene);
+    scene.update = GameScene.prototype.update.bind(scene);
+    scene.preload = GameScene.prototype.preload.bind(scene);
+    scene.togglePlayerControl = GameScene.prototype.togglePlayerControl.bind(scene);
+    scene.updateActiveChunks = GameScene.prototype.updateActiveChunks.bind(scene);
+    scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
+
+    // Mock the necessary properties on the scene instance
+    scene.physics = scene.sys.game.scene.scenes[0].physics;
+    scene.anims = scene.sys.game.scene.scenes[0].anims;
+    scene.input = scene.sys.game.scene.scenes[0].input;
+    scene.time = scene.sys.game.scene.scenes[0].time;
+    scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn() } };
+
+
     LevelGenerator.mockClear();
   });
 
@@ -24,9 +53,8 @@ describe('GameScene', () => {
     expect(scene.cameras.main.setBackgroundColor).toHaveBeenCalledWith('#ffffff');
   });
 
-  it('should create the player and platform groups', () => {
+  it('should create the player', () => {
     scene.create();
-    expect(scene.physics.add.staticGroup).toHaveBeenCalled();
     // The player is created at (100, 450) in GameScene.js
     expect(scene.physics.add.sprite).toHaveBeenCalledWith(100, 450, 'idle');
   });
@@ -38,14 +66,10 @@ describe('GameScene', () => {
   });
 
   it('should use the LevelGenerator to create the level', () => {
-    scene.create(); // The create method calls redrawLevel
+    scene.create(); // The create method calls updateActiveChunks
 
-    expect(LevelGenerator).toHaveBeenCalledTimes(1);
-    const generatorInstance = LevelGenerator.mock.instances[0];
-    const mockGenerate = generatorInstance.generate;
-
-    // Check that our generator's method was called
-    expect(mockGenerate).toHaveBeenCalled();
-    expect(mockGenerate).toHaveBeenCalledWith(scene.platforms, expect.any(Number));
+    expect(levelGenerator.generateChunk).toHaveBeenCalled();
+    // updateActiveChunks calls generateChunk with x, y, chunkSize, tileSize
+    expect(levelGenerator.generateChunk).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number));
   });
 });
