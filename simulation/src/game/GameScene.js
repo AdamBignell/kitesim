@@ -53,16 +53,31 @@ export default class GameScene extends Phaser.Scene {
     }
 
 
-    // --- Player Setup ---
-    // (Your existing player creation code)
-    this.player = this.physics.add.sprite(100, 3000, 'idle');
+    // --- Initial World Generation and Player Setup ---
+    // Generate the initial chunk and get the spawn point
+    const { platforms: initialPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+
+    // Create the player at the dynamic spawn point
+    this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
     this.player.setBounce(0.2);
-    this.player.setCollideWorldBounds(false); // We'll manage world bounds manually now
+    this.player.setCollideWorldBounds(false); // World bounds are managed by chunk loading
+
+    // Store the initial chunk in our active chunks map
+    this.activeChunks.set('0,0', initialPlatforms);
+
+    // Set up collision between the player and the initial platforms
+    this.physics.add.collider(this.player, initialPlatforms);
 
     // --- Camera ---
     this.cameras.main.startFollow(this.player);
 
-    // --- Initial World Generation ---
+    // --- Initial Chunk Loading ---
+    // The initial chunk is already loaded, so we just need to load surrounding ones.
+    // We'll set the player's initial chunk coordinate and then call updateActiveChunks.
+    this.playerChunkCoord = {
+        x: Math.floor(this.player.x / (this.CHUNK_SIZE * this.TILE_SIZE)),
+        y: Math.floor(this.player.y / (this.CHUNK_SIZE * this.TILE_SIZE))
+    };
     this.updateActiveChunks();
 
     // Create animations for the player.
