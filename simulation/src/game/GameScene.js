@@ -45,7 +45,7 @@ export default class GameScene extends Phaser.Scene {
 
     // --- World & Chunk Management Setup ---
     this.TILE_SIZE = 32;
-    this.CHUNK_SIZE = 16; // Chunks are 16x16 tiles
+    this.CHUNK_SIZE = 64; // Chunks are 64x64 tiles
     this.activeChunks = new Map();
     this.playerChunkCoord = { x: 0, y: 0 };
     if (!this.levelGenerator) {
@@ -55,7 +55,7 @@ export default class GameScene extends Phaser.Scene {
 
     // --- Player Setup ---
     // (Your existing player creation code)
-    this.player = this.physics.add.sprite(100, 450, 'idle');
+    this.player = this.physics.add.sprite(100, 3000, 'idle');
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(false); // We'll manage world bounds manually now
 
@@ -306,7 +306,7 @@ export default class GameScene extends Phaser.Scene {
   // --- New Chunk Management Method ---
   updateActiveChunks() {
     const { x: playerChunkX, y: playerChunkY } = this.playerChunkCoord;
-    const loadRadius = 2; // Load a 5x5 grid of chunks (2 chunks in each direction)
+    const loadRadius = 3; // Load a 7x7 grid of chunks (3 chunks in each direction)
     const newActiveChunks = new Map();
 
     // Load new chunks

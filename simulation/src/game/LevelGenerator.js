@@ -65,16 +65,20 @@ export default class LevelGenerator {
       const x = Math.floor(Math.random() * (width - structure.width));
       const y = Math.floor(Math.random() * (height - structure.height));
 
-      // Ensure the structure is placed on top of the floor
+      const isFloating = Math.random() < 0.2; // 20% chance to be a floating island
+
+      // Ensure the structure is placed on top of the floor, unless it's a floating island
       let isOnFloor = false;
-      for(let sx=0; sx<structure.width; sx++) {
-          if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
-              isOnFloor = true;
-              break;
-          }
+      if (!isFloating) {
+        for(let sx=0; sx<structure.width; sx++) {
+            if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
+                isOnFloor = true;
+                break;
+            }
+        }
       }
 
-      if (isOnFloor && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
+      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
         this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
       }
     }
