@@ -18,7 +18,7 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize);
+    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
 
     for (let y = 0; y < chunkSize; y++) {
       for (let x = 0; x < chunkSize; x++) {
@@ -38,7 +38,7 @@ export default class LevelGenerator {
     return newPlatforms;
   }
 
-  placeStructures(chunkGrid, placedStructures, width, height) {
+  placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY) {
     const floor = createFloor(width, { height: height });
     this.placeStructure(chunkGrid, { structure: floor, x: 0, y: 0 }, placedStructures);
 
@@ -77,6 +77,18 @@ export default class LevelGenerator {
       if (isOnFloor && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
         this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
       }
+    }
+
+    if (chunkX === 0 && chunkY === 0) {
+        // Player starts at (100, 450), which is tile (3, 14) in chunk (0,0)
+        const safeZone = { x: 1, y: 12, width: 5, height: 5 };
+        for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
+            for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    chunkGrid.setTile(x, y, 0);
+                }
+            }
+        }
     }
   }
 
