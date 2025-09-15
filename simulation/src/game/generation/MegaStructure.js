@@ -5,32 +5,76 @@ export function createFloor(width, {
     height = 20,
     bottomPadding = 3,
     topPadding = 10,
-    roughness = 0.5,
-    wallSmoothness = 3
+    // Player capabilities
+    maxJumpHeight = 5, // Max height player can jump, in tiles
+    maxStepHeight = 1, // Max height player can walk up without jumping
+    // Terrain feature probabilities
+    flatProbability = 0.6,
+    slopeProbability = 0.3,
+    wallProbability = 0.1
 }) {
     const grid = new Grid(width, height, 0);
+    let currentHeight = height - bottomPadding - 5;
 
-    // Create the main floor shape with a rough top surface
-    for (let x = 0; x < width; x++) {
-        const topY = topPadding + Math.floor(Math.random() * roughness * height);
-        for (let y = topY; y < height - bottomPadding; y++) {
-            grid.setTile(x, y, 1);
-        }
-    }
+    for (let x = 0; x < width; ) {
+        const rand = Math.random();
 
-    // Smooth out the walls to make them less sheer
-    for (let y = topPadding; y < height - bottomPadding; y++) {
-        for (let x = 1; x < width - 1; x++) {
-            if (grid.getTile(x, y) === 1) {
-                for (let i = 1; i <= wallSmoothness; i++) {
-                    if (grid.getTile(x - i, y) === 0 && Math.random() > 0.5) {
-                        grid.setTile(x - i, y, 1);
-                    }
-                    if (grid.getTile(x + i, y) === 0 && Math.random() > 0.5) {
-                        grid.setTile(x + i, y, 1);
+        if (rand < flatProbability) {
+            // Create a flat section
+            const length = Math.floor(Math.random() * 10) + 5;
+            for (let i = 0; i < length && x + i < width; i++) {
+                for (let y = currentHeight; y < height; y++) {
+                    grid.setTile(x + i, y, 1);
+                }
+            }
+            x += length;
+        } else if (rand < flatProbability + slopeProbability) {
+            // Create a slope
+            const length = Math.floor(Math.random() * 10) + 5;
+            const slopeHeight = Math.floor(Math.random() * (maxJumpHeight - 1)) + 1;
+            const slopeDirection = Math.random() > 0.5 ? 1 : -1;
+
+            for (let i = 0; i < length && x + i < width; i++) {
+                const y = currentHeight + Math.round((i / length) * slopeHeight * slopeDirection);
+                if (y < height - bottomPadding && y >= topPadding) {
+                    for (let j = y; j < height; j++) {
+                        grid.setTile(x + i, j, 1);
                     }
                 }
             }
+            currentHeight += slopeHeight * slopeDirection;
+            if (currentHeight >= height - bottomPadding) currentHeight = height - bottomPadding -1;
+            if (currentHeight < topPadding) currentHeight = topPadding;
+            x += length;
+        } else {
+            // Create a wall
+            const wallHeight = Math.floor(Math.random() * (maxJumpHeight - maxStepHeight)) + maxStepHeight + 1;
+            const wallDirection = Math.random() > 0.5 ? 1 : -1;
+            const newHeight = currentHeight - (wallHeight * wallDirection);
+
+            if (newHeight < height - bottomPadding && newHeight >= topPadding) {
+                const wallX = x > 0 ? x - 1 : x;
+                const startY = Math.min(currentHeight, newHeight);
+                const endY = Math.max(currentHeight, newHeight);
+
+                // Draw the vertical wall
+                for (let y = startY; y <= endY; y++) {
+                    grid.setTile(wallX, y, 1);
+                }
+
+                // Fill below the wall
+                for (let y = endY + 1; y < height; y++) {
+                    grid.setTile(wallX, y, 1);
+                }
+
+                currentHeight = newHeight;
+            }
+
+            // Fill the current column below the new height
+            for (let y = currentHeight; y < height; y++) {
+                grid.setTile(x, y, 1);
+            }
+            x++;
         }
     }
 
