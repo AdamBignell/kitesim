@@ -19,7 +19,7 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    this.placeStructures(chunkGrid, newPlatforms, placedStructures, chunkSize, chunkSize, chunkX, chunkY, tileSize);
 
     const meshes = GreedyMesher.mesh(chunkGrid);
     for (const mesh of meshes) {
@@ -36,51 +36,99 @@ export default class LevelGenerator {
     return { platforms: newPlatforms, grid: chunkGrid };
   }
 
-  placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY) {
-    const floor = createFloor(width, { height: height });
-    this.placeStructure(chunkGrid, { structure: floor, x: 0, y: 0 }, placedStructures);
+  placeStructures(chunkGrid, platforms, placedStructures, width, height, chunkX, chunkY, tileSize) {
+    const floorSpline = createFloor(width, { height: height, tileSize: tileSize });
 
-    // Fill in below the floor to make it solid
-    for (let x = 0; x < width; x++) {
-      let firstTile = -1;
-      for (let y = 0; y < height; y++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          firstTile = y;
-          break;
-        }
-      }
-
-      if (firstTile !== -1) {
-        for (let y = firstTile; y < height; y++) {
-          this.placeStructure(chunkGrid, { structure: Structures.filler, x, y }, placedStructures);
-        }
-      }
-    }
+    // Create the physics chain and visual representation for the spline-based floor
+    this.placeSplineTerrain(floorSpline, platforms, chunkX, chunkY, width, tileSize);
 
     // Add some features on top of the floor
     for (let i = 0; i < 10; i++) {
-      const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
-      const x = Math.floor(Math.random() * (width - structure.width));
-      const y = Math.floor(Math.random() * (height - structure.height));
+        const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
+        const x = Math.floor(Math.random() * (width - structure.width));
+        const y = Math.floor(Math.random() * (height - structure.height));
 
-      const isFloating = Math.random() < 0.2; // 20% chance to be a floating island
+        const isFloating = Math.random() < 0.2; // 20% chance to be a floating island
 
-      // Ensure the structure is placed on top of the floor, unless it's a floating island
-      let isOnFloor = false;
-      if (!isFloating) {
-        for(let sx=0; sx<structure.width; sx++) {
-            if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
-                isOnFloor = true;
-                break;
+        let placeY = y;
+        let canBePlaced = false;
+
+        if (isFloating) {
+            canBePlaced = true; // Floating structures can be placed anywhere (as long as it's empty)
+        } else {
+            // For non-floating structures, calculate the Y position based on the spline surface
+            // Use the center of the structure for a more stable placement
+            const t = (x + structure.width / 2) / width;
+            const surfacePoint = floorSpline.getPointAt(t);
+            if (surfacePoint) {
+                const surfaceY_pixels = surfacePoint.y;
+                const structureHeightInPixels = structure.height * tileSize;
+                // Position the structure so its bottom rests on the spline surface
+                const y_pixels = surfaceY_pixels - structureHeightInPixels;
+                placeY = Math.floor(y_pixels / tileSize);
+                canBePlaced = true;
             }
         }
-      }
 
-      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
-        this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
-      }
+        if (canBePlaced && this.canPlace(chunkGrid, structure, x, placeY, placedStructures)) {
+            this.placeStructure(chunkGrid, { structure, x: x, y: placeY }, placedStructures);
+        }
     }
 
+    return floorSpline; // Return the spline for potential use (e.g., spawn point calculation)
+  }
+
+  placeSplineTerrain(spline, platforms, chunkX, chunkY, chunkSize, tileSize) {
+    const chunkWorldX = chunkX * chunkSize * tileSize;
+    const chunkWorldY = chunkY * chunkSize * tileSize;
+
+    const splineWidth = chunkSize * tileSize;
+    const step = 4; // Create a physics body every 4 pixels
+    const numSteps = Math.floor(splineWidth / step);
+    const curvePoints = spline.getPoints(numSteps);
+
+    if (curvePoints.length === 0) return;
+
+    // --- 1. Build Physics Chain ---
+    for (const point of curvePoints) {
+        const x = chunkWorldX + point.x;
+        const y = chunkWorldY + point.y;
+
+        // Create a tall, thin, invisible physics column that goes from the surface to the bottom of the screen
+        const columnHeight = this.scene.scale.height - y;
+        const columnX = x;
+        // The y position of a body is its center
+        const columnY = y + (columnHeight / 2);
+
+        const physicsColumn = platforms.create(columnX, columnY, null);
+        // Overlap columns slightly to prevent the player from snagging on edges
+        physicsColumn.setSize(step + 1, columnHeight);
+        physicsColumn.setVisible(false);
+        physicsColumn.refreshBody();
+    }
+
+    // --- 2. Draw Visual Surface ---
+    const graphics = this.scene.add.graphics();
+    graphics.x = chunkWorldX;
+    graphics.y = chunkWorldY;
+    graphics.fillStyle(0x000000, 1); // Black fill
+    graphics.beginPath();
+
+    // Start at the bottom-left of the visible area, go up to the first spline point
+    graphics.moveTo(curvePoints[0].x, this.scene.scale.height);
+    graphics.lineTo(curvePoints[0].x, curvePoints[0].y);
+
+    // Draw a line along all the spline points
+    for (let i = 1; i < curvePoints.length; i++) {
+        graphics.lineTo(curvePoints[i].x, curvePoints[i].y);
+    }
+
+    // Go from the last spline point down to the bottom-right of the visible area
+    graphics.lineTo(curvePoints[curvePoints.length - 1].x, this.scene.scale.height);
+
+    // Close the path to create a filled shape
+    graphics.closePath();
+    graphics.fillPath();
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
@@ -90,8 +138,8 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    // First, place all the structures for the initial chunk
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    // Place all the structures and get the floor spline back
+    const floorSpline = this.placeStructures(chunkGrid, newPlatforms, placedStructures, chunkSize, chunkSize, chunkX, chunkY, tileSize);
 
     // Now, create a safe zone for the player to spawn in
     const safeZone = { x: 1, y: 12, width: 5, height: 5 };
@@ -103,34 +151,18 @@ export default class LevelGenerator {
         }
     }
 
-    // Find a safe spawn point within the cleared safe zone
+    // Find a safe spawn point using the spline.
     const searchX = safeZone.x + Math.floor(safeZone.width / 2);
-    let groundY = -1;
+    const t = searchX / chunkSize;
+    const surfacePoint = floorSpline.getPointAt(t);
 
-    // Scan downwards from the top of the chunk to find the first solid tile in our search column
-    for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(searchX, y) === 1) {
-            groundY = y;
-            break;
-        }
-    }
+    const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+    // Place the player 2 tiles above the ground to prevent spawning inside it
+    const spawnY = (chunkY * chunkSize + surfacePoint.y) - (tileSize * 2);
+    const spawnPoint = { x: spawnX, y: spawnY };
 
-    let spawnPoint;
-    if (groundY !== -1) {
-        // We found ground. The spawn point should be slightly above it.
-        const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
-        // Place the player 2 tiles above the ground to prevent spawning inside it
-        const spawnY = (chunkY * chunkSize + groundY) * tileSize - (tileSize * 2);
-        spawnPoint = { x: spawnX, y: spawnY };
-    } else {
-        // Fallback: If no ground is found in the search column (highly unlikely),
-        // spawn in the middle of the safe zone.
-        const fallbackX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
-        const fallbackY = (chunkY * chunkSize + safeZone.y + Math.floor(safeZone.height / 2)) * tileSize + tileSize / 2;
-        spawnPoint = { x: fallbackX, y: fallbackY };
-    }
 
-    // Finally, create the platform bodies from the modified chunkGrid
+    // Finally, create the platform bodies from the modified chunkGrid (for structures, not the floor)
     const meshes = GreedyMesher.mesh(chunkGrid);
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;

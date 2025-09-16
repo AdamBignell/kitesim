@@ -34,6 +34,7 @@ export default class GameScene extends Phaser.Scene {
     // In create(), near this.isAIControlled
     this.isWallJumping = false;
     this.isAISprinting = false;
+    this.PLAYER_STEP_HEIGHT = 8; // Max height in pixels the player can automatically step up.
     // At the top of the create() method
     this.isAIControlled = true; // Start in AI mode by default
     this.aiAction = 'idle';     // Stores the AI's current horizontal movement
@@ -272,6 +273,21 @@ export default class GameScene extends Phaser.Scene {
         }
       }
 
+      // Auto-Stepping Logic
+      const onGround = this.player.body.touching.down || this.player.body.blocked.down;
+
+      // Only perform step check if on ground and moving into a wall
+      if (onGround && !this.isWallJumping) {
+        const isPressingLeft = this.cursors.left.isDown || this.keys.left.isDown;
+        const isPressingRight = this.cursors.right.isDown || this.keys.right.isDown;
+
+        if (this.player.body.blocked.right && isPressingRight) {
+          this.attemptStep('right');
+        } else if (this.player.body.blocked.left && isPressingLeft) {
+          this.attemptStep('left');
+        }
+      }
+
       // Jumping
       if (isJumpKeyDown) {
         if (isWallSliding) {
@@ -373,5 +389,51 @@ export default class GameScene extends Phaser.Scene {
 
     // Replace the old map with the new one
     this.activeChunks = newActiveChunks;
+  }
+
+  attemptStep(direction) {
+    const probeDistance = 5; // How far forward to check for a step
+    const playerBody = this.player.body;
+
+    // The X position of our sensor rectangles, just in front of the player
+    const checkX = (direction === 'right')
+        ? playerBody.right + 1
+        : playerBody.left - probeDistance - 1;
+
+    // The Y position of the 'bottom' sensor, at the player's feet
+    // We check a 2px tall rectangle to be safe
+    const bottomSensorY = playerBody.bottom - 2;
+
+    // The Y position of the 'top' sensor, at the max step height
+    const topSensorY = playerBody.bottom - this.PLAYER_STEP_HEIGHT - 2;
+
+    // Get all bodies overlapping the bottom sensor
+    const bottomBodies = this.physics.world.overlapRect(
+        checkX,
+        bottomSensorY,
+        probeDistance,
+        2,
+        true
+    );
+
+    // Get all bodies overlapping the top sensor
+    const topBodies = this.physics.world.overlapRect(
+        checkX,
+        topSensorY,
+        probeDistance,
+        2,
+        true
+    );
+
+    // Filter out the player's own body from the results, just in case
+    const bottomBlocked = bottomBodies.filter(body => body !== playerBody).length > 0;
+    const topBlocked = topBodies.filter(body => body !== playerBody).length > 0;
+
+    // If the bottom is blocked but the top is clear, it's a step!
+    if (bottomBlocked && !topBlocked) {
+        // Nudge the player's position up to clear the step.
+        // This needs to be a bit more than the step height to avoid getting stuck again.
+        this.player.y -= this.PLAYER_STEP_HEIGHT + 2;
+    }
   }
 }

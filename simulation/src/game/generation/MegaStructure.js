@@ -1,87 +1,60 @@
-import Structure from './Structure';
-import Grid from './Grid';
+import * as Phaser from 'phaser';
 
-export function createFloor(width, {
-    height = 100,
-    bottomPadding = 10,
-    topPadding = 20,
-    // Player capabilities
-    maxJumpHeight = 20, // Max height player can jump, in tiles
-    maxStepHeight = 2, // Max height player can walk up without jumping
-    // Terrain feature probabilities
-    flatProbability = 0.3,
-    slopeProbability = 0.5,
-    wallProbability = 0.2
+/**
+ * Creates a smooth, curved terrain surface for a chunk.
+ * Instead of a grid, this function returns a Phaser.Curves.Spline object
+ * that defines the shape of the hills.
+ *
+ * @param {number} widthInTiles - The width of the chunk in tiles.
+ * @param {object} options - Configuration options for terrain generation.
+ * @param {number} [options.heightInTiles=64] - The height of the chunk in tiles.
+ * @param {number} [options.tileSize=32] - The size of a single tile in pixels.
+ * @param {number} [options.numPoints=15] - How many "anchor" points for the spline. More points = more variation.
+ * @param {number} [options.minHillHeight=50] - The minimum height change for a hill/valley in pixels.
+ * @param {number} [options.maxHillHeight=150] - The maximum height change for a hill/valley in pixels.
+ * @returns {Phaser.Curves.Spline} A spline object representing the terrain surface.
+ */
+export function createFloor(widthInTiles, {
+    heightInTiles = 64,
+    tileSize = 32,
+    numPoints = 15,
+    minHillHeight = 50,
+    maxHillHeight = 150
 }) {
-    const grid = new Grid(width, height, 0);
-    let currentHeight = height - bottomPadding - 20;
+    const widthInPixels = widthInTiles * tileSize;
+    const heightInPixels = heightInTiles * tileSize;
 
-    for (let x = 0; x < width; ) {
-        const rand = Math.random();
+    const points = [];
+    const segmentWidth = widthInPixels / (numPoints - 1);
 
-        if (rand < flatProbability) {
-            // Create a flat section
-            const length = Math.floor(Math.random() * 20) + 10;
-            for (let i = 0; i < length && x + i < width; i++) {
-                for (let y = currentHeight; y < height; y++) {
-                    grid.setTile(x + i, y, 1);
-                }
-            }
-            x += length;
-        } else if (rand < flatProbability + slopeProbability) {
-            // Create a slope
-            const length = Math.floor(Math.random() * 20) + 10;
-            const slopeHeight = Math.floor(Math.random() * (maxJumpHeight - 1)) + 1;
-            const slopeDirection = Math.random() > 0.5 ? 1 : -1;
+    // Start the terrain around 60% of the way down the chunk.
+    let currentY = heightInPixels * 0.6;
 
-            for (let i = 0; i < length && x + i < width; i++) {
-                const y = currentHeight + Math.round((i / length) * slopeHeight * slopeDirection);
-                if (y < height - bottomPadding && y >= topPadding) {
-                    for (let j = y; j < height; j++) {
-                        grid.setTile(x + i, j, 1);
-                    }
-                }
-            }
-            currentHeight += slopeHeight * slopeDirection;
-            if (currentHeight >= height - bottomPadding) currentHeight = height - bottomPadding -1;
-            if (currentHeight < topPadding) currentHeight = topPadding;
-            x += length;
+    // Create the anchor points for our smooth curve
+    for (let i = 0; i < numPoints; i++) {
+        const x = i * segmentWidth;
+
+        if (i === 0 || i === numPoints - 1) {
+            // Start and end flat to allow for smoother chunk-to-chunk transitions.
+            points.push(x, currentY);
         } else {
-            // Create a wall
-            const wallHeight = Math.floor(Math.random() * (maxJumpHeight - maxStepHeight)) + maxStepHeight + 1;
-            const wallDirection = Math.random() > 0.5 ? 1 : -1;
-            const newHeight = currentHeight - (wallHeight * wallDirection);
+            // Add a random hill or valley.
+            const randomHeightChange = Phaser.Math.FloatBetween(-minHillHeight, maxHillHeight);
+            let newY = currentY + randomHeightChange;
 
-            if (newHeight < height - bottomPadding && newHeight >= topPadding) {
-                const wallX = x > 0 ? x - 1 : x;
-                const startY = Math.min(currentHeight, newHeight);
-                const endY = Math.max(currentHeight, newHeight);
+            // Clamp the height to stay within the chunk's vertical bounds, with some padding.
+            const topPadding = heightInPixels * 0.25;
+            const bottomPadding = heightInPixels * 0.75;
+            newY = Phaser.Math.Clamp(newY, topPadding, bottomPadding);
 
-                // Draw the vertical wall
-                for (let y = startY; y <= endY; y++) {
-                    grid.setTile(wallX, y, 1);
-                }
-
-                // Fill below the wall
-                for (let y = endY + 1; y < height; y++) {
-                    grid.setTile(wallX, y, 1);
-                }
-
-                currentHeight = newHeight;
-            }
-
-            // Fill the current column below the new height
-            for (let y = currentHeight; y < height; y++) {
-                grid.setTile(x, y, 1);
-            }
-            x++;
+            points.push(x, newY);
+            // The next point's height is relative to this one, creating a "walk".
+            currentY = newY;
         }
     }
 
-    const snapPoints = new Map([
-        ['left', [{ x: 0, y: Math.floor(height / 2) }]],
-        ['right', [{ x: width - 1, y: Math.floor(height / 2) }]],
-    ]);
-
-    return new Structure(width, height, grid, snapPoints);
+    // Create the Spline object from these points.
+    // The points array is [x1, y1, x2, y2, ...]
+    const spline = new Phaser.Curves.Spline(points);
+    return spline;
 }
