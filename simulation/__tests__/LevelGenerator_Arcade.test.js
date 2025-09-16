@@ -1,4 +1,4 @@
-import LevelGenerator from '../src/game/LevelGenerator';
+import LevelGenerator from '../src/game/LevelGenerator_Arcade';
 import PlayerCapabilitiesProfile from '../src/game/generation/PlayerCapabilitiesProfile';
 import Grid from '../src/game/generation/Grid';
 
@@ -74,12 +74,12 @@ describe('LevelGenerator', () => {
     expect(levelGenerator).toBeInstanceOf(LevelGenerator);
   });
 
-  it('should generate a chunk with a platforms container', () => {
+  it('should generate a chunk with platforms', () => {
     const levelGenerator = new LevelGenerator(scene, pcp);
     const { platforms } = levelGenerator.generateChunk(0, 0, 32, 16);
     expect(platforms).toBeDefined();
-    // Check that the container's destroy method is a function, which is what we expect.
-    expect(platforms.destroy).toBeInstanceOf(Function);
+    // The mock for staticGroup returns an object. We check if the returned platforms object is that mock.
+    expect(platforms).toEqual(scene.physics.add.staticGroup());
   });
 
   it('should generate an initial chunk with a spawn point', () => {

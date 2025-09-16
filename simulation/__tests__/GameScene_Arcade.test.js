@@ -1,9 +1,9 @@
-import GameScene from '../src/game/GameScene';
+import GameScene from '../src/game/GameScene_Arcade';
 import * as Phaser from 'phaser';
-import LevelGenerator from '../src/game/LevelGenerator';
+import LevelGenerator from '../src/game/LevelGenerator_Arcade';
 
 // The phaser module is mocked in jest.config.js
-jest.mock('../src/game/LevelGenerator', () => {
+jest.mock('../src/game/LevelGenerator_Arcade', () => {
     return jest.fn().mockImplementation(() => {
         return {
             generateChunk: jest.fn().mockReturnValue({
@@ -93,7 +93,7 @@ describe('GameScene', () => {
   it('should create the player at the spawn point', () => {
     scene.create();
     // The player is created at the spawnPoint from the level generator
-    expect(scene.matter.add.sprite).toHaveBeenCalledWith(150, 250, 'idle', null, expect.any(Object));
+    expect(scene.physics.add.sprite).toHaveBeenCalledWith(150, 250, 'idle');
   });
 
   it('should have a togglePlayerControl method', () => {
