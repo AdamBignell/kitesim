@@ -23,13 +23,13 @@ export default class GameScene extends Phaser.Scene {
   create() {
     // In create()
     this.WALK_SPEED = 200;
-    this.SPRINT_SPEED = 450;
+    this.SPRINT_SPEED = 550;
     this.BASE_JUMP_FORCE = -650;
     this.SPRINT_JUMP_FORCE = -750;
     this.WALL_SLIDE_SPEED = 100;
-    this.WALL_JUMP_FORCE_Y = -550;
+    this.WALL_JUMP_FORCE_Y = -700;
     this.WALL_JUMP_FORCE_X = 450;
-    this.WALL_JUMP_LOCKOUT = 250; // ms of input lockout
+    this.WALL_JUMP_LOCKOUT = 150; // ms of input lockout
 
     // In create(), near this.isAIControlled
     this.isWallJumping = false;
@@ -232,8 +232,8 @@ export default class GameScene extends Phaser.Scene {
       const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
 
       // Wall slide and jump logic
-      const onWallLeft = this.player.body.touching.left && !this.player.body.touching.down;
-      const onWallRight = this.player.body.touching.right && !this.player.body.touching.down;
+      const onWallLeft = this.player.body.touching.left && !(this.player.body.touching.down || this.player.body.blocked.down);
+      const onWallRight = this.player.body.touching.right && !(this.player.body.touching.down || this.player.body.blocked.down);
       let isWallSliding = false;
 
       if ((onWallLeft && (this.cursors.left.isDown || this.keys.left.isDown)) ||
