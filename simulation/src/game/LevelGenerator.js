@@ -19,7 +19,37 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    const chunkPixelWidth = chunkSize * tileSize;
+    const generationHeight = this.scene.scale.height;
+
+    let floorSpline = null;
+    // Generate the floor spline and physics chain ONLY for the 'ground level' chunks.
+    if (chunkY === 0) {
+        floorSpline = createFloor(chunkPixelWidth, {
+            height: generationHeight,
+        });
+
+        const numSteps = Math.floor(chunkPixelWidth / 4); // 4px wide segments
+        const curvePoints = floorSpline.getPoints(numSteps);
+
+        for (const point of curvePoints) {
+            // point.x is relative to chunk start (0 -> chunkPixelWidth)
+            // point.y is an absolute world y-coordinate
+            const columnWorldX = (chunkX * chunkPixelWidth) + point.x;
+            const columnWorldY = point.y;
+
+            const columnHeight = generationHeight - columnWorldY;
+            // Center the column body vertically
+            const columnBodyY = columnWorldY + (columnHeight / 2);
+
+            const physicsColumn = newPlatforms.create(columnWorldX, columnBodyY);
+            physicsColumn.setSize(4, columnHeight);
+            physicsColumn.setVisible(false);
+            physicsColumn.refreshBody();
+        }
+    }
+
+    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY, floorSpline);
 
     const meshes = GreedyMesher.mesh(chunkGrid);
     for (const mesh of meshes) {
@@ -33,54 +63,54 @@ export default class LevelGenerator {
       newPlatforms.add(newPlatform);
     }
 
-    return { platforms: newPlatforms, grid: chunkGrid };
+    return { platforms: newPlatforms, grid: chunkGrid, floorSpline };
   }
 
-  placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY) {
-    const floor = createFloor(width, { height: height });
-    this.placeStructure(chunkGrid, { structure: floor, x: 0, y: 0 }, placedStructures);
+  placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY, floorSpline) {
+    // Add some features on top of the floor or floating.
+    const TILE_SIZE = this.scene.TILE_SIZE || 32;
 
-    // Fill in below the floor to make it solid
-    for (let x = 0; x < width; x++) {
-      let firstTile = -1;
-      for (let y = 0; y < height; y++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          firstTile = y;
-          break;
-        }
-      }
-
-      if (firstTile !== -1) {
-        for (let y = firstTile; y < height; y++) {
-          this.placeStructure(chunkGrid, { structure: Structures.filler, x, y }, placedStructures);
-        }
-      }
-    }
-
-    // Add some features on top of the floor
     for (let i = 0; i < 10; i++) {
       const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
+      // Get a random x position in tiles.
       const x = Math.floor(Math.random() * (width - structure.width));
-      const y = Math.floor(Math.random() * (height - structure.height));
+      let y; // y will be determined below.
 
-      const isFloating = Math.random() < 0.2; // 20% chance to be a floating island
+      const isFloating = Math.random() < 0.2;
 
-      // Ensure the structure is placed on top of the floor, unless it's a floating island
-      let isOnFloor = false;
-      if (!isFloating) {
-        for(let sx=0; sx<structure.width; sx++) {
-            if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
-                isOnFloor = true;
-                break;
-            }
+      let canPlaceStructure = false;
+
+      if (!isFloating && floorSpline) {
+        // --- Place structure on the spline-based ground ---
+
+        // 1. Calculate the pixel X-coordinate for the center of the structure's base.
+        const structureBaseCenterX_tiles = x + (structure.width / 2);
+        const structureBaseCenterX_pixels = structureBaseCenterX_tiles * TILE_SIZE;
+
+        // 2. Get the ground height from the spline at this X.
+        const chunkPixelWidth = width * TILE_SIZE;
+        const groundPoint = floorSpline.getPoint(structureBaseCenterX_pixels / chunkPixelWidth);
+
+        if (groundPoint) {
+            const groundY_pixels = groundPoint.y;
+            // 3. Convert the pixel ground height back to a tile coordinate.
+            const groundY_tiles = Math.floor(groundY_pixels / TILE_SIZE);
+
+            // 4. Set the structure's y position so its base rests on the ground.
+            y = groundY_tiles - structure.height;
+            canPlaceStructure = true;
         }
+      } else {
+        // --- Place structure at a random floating position ---
+        y = Math.floor(Math.random() * (height - structure.height));
+        canPlaceStructure = true;
       }
 
-      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
+      // 5. Check if the calculated position is valid and place the structure.
+      if (canPlaceStructure && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
         this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
       }
     }
-
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
@@ -90,60 +120,71 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
     const placedStructures = [];
 
-    // First, place all the structures for the initial chunk
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    const chunkPixelWidth = chunkSize * tileSize;
+    const generationHeight = this.scene.scale.height;
 
-    // Now, create a safe zone for the player to spawn in
-    const safeZone = { x: 1, y: 12, width: 5, height: 5 };
+    // --- Create Spline Floor ---
+    const floorSpline = createFloor(chunkPixelWidth, { height: generationHeight });
+    const numSteps = Math.floor(chunkPixelWidth / 4);
+    const curvePoints = floorSpline.getPoints(numSteps);
+
+    for (const point of curvePoints) {
+        const columnWorldX = point.x; // chunkX is 0
+        const columnWorldY = point.y;
+        const columnHeight = generationHeight - columnWorldY;
+        const columnBodyY = columnWorldY + (columnHeight / 2);
+
+        const physicsColumn = newPlatforms.create(columnWorldX, columnBodyY);
+        physicsColumn.setSize(4, columnHeight);
+        physicsColumn.setVisible(false);
+        physicsColumn.refreshBody();
+    }
+
+    // --- Place other structures (e.g., rocks) ---
+    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY, floorSpline);
+
+    // --- Create Safe Spawn Zone ---
+    const safeZone = { x: 1, y: 12, width: 5, height: 5 }; // in tiles
     for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
         for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
             if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-                chunkGrid.setTile(x, y, 0); // Clear out any terrain in the safe zone
+                chunkGrid.setTile(x, y, 0);
             }
         }
     }
 
-    // Find a safe spawn point within the cleared safe zone
-    const searchX = safeZone.x + Math.floor(safeZone.width / 2);
-    let groundY = -1;
+    // --- Determine Spawn Point using the Spline ---
+    const searchX_tiles = safeZone.x + Math.floor(safeZone.width / 2);
+    const searchX_pixels = searchX_tiles * tileSize;
 
-    // Scan downwards from the top of the chunk to find the first solid tile in our search column
-    for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(searchX, y) === 1) {
-            groundY = y;
-            break;
-        }
-    }
-
+    // getPoint takes a value from 0 to 1 for interpolation, so we normalize our pixel x.
+    const groundPoint = floorSpline.getPoint(searchX_pixels / chunkPixelWidth);
     let spawnPoint;
-    if (groundY !== -1) {
-        // We found ground. The spawn point should be slightly above it.
-        const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+
+    if (groundPoint) {
+        const spawnX = searchX_pixels;
         // Place the player 2 tiles above the ground to prevent spawning inside it
-        const spawnY = (chunkY * chunkSize + groundY) * tileSize - (tileSize * 2);
+        const spawnY = groundPoint.y - (tileSize * 2);
         spawnPoint = { x: spawnX, y: spawnY };
     } else {
-        // Fallback: If no ground is found in the search column (highly unlikely),
-        // spawn in the middle of the safe zone.
-        const fallbackX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
-        const fallbackY = (chunkY * chunkSize + safeZone.y + Math.floor(safeZone.height / 2)) * tileSize + tileSize / 2;
+        // Fallback spawn point
+        const fallbackX = searchX_pixels;
+        const fallbackY = (safeZone.y + Math.floor(safeZone.height / 2)) * tileSize;
         spawnPoint = { x: fallbackX, y: fallbackY };
     }
 
-    // Finally, create the platform bodies from the modified chunkGrid
+    // --- Create Physics for Grid-based Structures ---
     const meshes = GreedyMesher.mesh(chunkGrid);
     for (const mesh of meshes) {
-      const tileWorldX = (chunkX * chunkSize) + mesh.x;
-      const tileWorldY = (chunkY * chunkSize) + mesh.y;
-      const platformX = tileWorldX * tileSize;
-      const platformY = tileWorldY * tileSize;
+      const platformX = mesh.x * tileSize;
+      const platformY = mesh.y * tileSize;
       const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
       newPlatform.setOrigin(0,0);
       this.scene.physics.add.existing(newPlatform, true);
       newPlatforms.add(newPlatform);
     }
 
-    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
+    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid, floorSpline };
   }
 
   canPlace(chunkGrid, structure, x, y, placedStructures) {

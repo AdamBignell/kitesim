@@ -5,13 +5,18 @@ import LevelGenerator from '../src/game/LevelGenerator';
 // The phaser module is mocked in jest.config.js
 jest.mock('../src/game/LevelGenerator', () => {
     return jest.fn().mockImplementation(() => {
+        const mockSpline = {
+            getPoints: jest.fn().mockReturnValue([{x: 0, y: 400}, {x: 1024, y: 450}]),
+        };
         return {
             generateChunk: jest.fn().mockReturnValue({
-                platforms: { destroy: jest.fn() }
+                platforms: { destroy: jest.fn() },
+                floorSpline: mockSpline,
             }),
             generateInitialChunkAndSpawnPoint: jest.fn().mockReturnValue({
                 platforms: { destroy: jest.fn() },
-                spawnPoint: { x: 150, y: 250 }
+                spawnPoint: { x: 150, y: 250 },
+                floorSpline: mockSpline,
             })
         };
     });
@@ -35,6 +40,7 @@ describe('GameScene', () => {
     scene.togglePlayerControl = GameScene.prototype.togglePlayerControl.bind(scene);
     scene.updateActiveChunks = GameScene.prototype.updateActiveChunks.bind(scene);
     scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
+    scene.drawSpline = GameScene.prototype.drawSpline.bind(scene);
 
     // Mock the necessary properties on the scene instance
     scene.physics = scene.sys.game.scene.scenes[0].physics;
@@ -42,12 +48,21 @@ describe('GameScene', () => {
     scene.input = scene.sys.game.scene.scenes[0].input;
     scene.time = scene.sys.game.scene.scenes[0].time;
     scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn() } };
+    scene.scale = { height: 800 };
     scene.add = {
       graphics: jest.fn().mockReturnValue({
-        fillStyle: jest.fn(),
-        fillRect: jest.fn(),
-        generateTexture: jest.fn(),
-        destroy: jest.fn(),
+        fillStyle: jest.fn().mockReturnThis(),
+        fillRect: jest.fn().mockReturnThis(),
+        generateTexture: jest.fn().mockReturnThis(),
+        destroy: jest.fn().mockReturnThis(),
+        clear: jest.fn().mockReturnThis(),
+        lineStyle: jest.fn().mockReturnThis(),
+        beginPath: jest.fn().mockReturnThis(),
+        moveTo: jest.fn().mockReturnThis(),
+        lineTo: jest.fn().mockReturnThis(),
+        closePath: jest.fn().mockReturnThis(),
+        fillPath: jest.fn().mockReturnThis(),
+        strokePath: jest.fn().mockReturnThis(),
       }),
       tileSprite: jest.fn().mockReturnValue({
         setOrigin: jest.fn(),
