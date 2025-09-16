@@ -74,9 +74,23 @@ export const Math = {
     Vector2: jest.fn()
 }
 
+export const Geom = {
+  Polygon: jest.fn(), // Mock the constructor
+};
+
+// Mock the static method GetAABB
+Geom.Polygon.GetAABB = jest.fn().mockReturnValue({
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+});
+
+
 // Add any other specific Phaser mocks your scene uses
 export default {
   Scene,
   Math,
-  Input
+  Input,
+  Geom
 };

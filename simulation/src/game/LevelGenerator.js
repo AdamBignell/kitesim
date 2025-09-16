@@ -24,17 +24,17 @@ export default class LevelGenerator {
     const chunkWorldX = chunkX * chunkSize * tileSize;
     // Using scene height for vertical bounds is more robust for a scrolling world
     const chunkWorldY = 0; // Top of the world
-    const chunkHeightPixels = this.scene.scale.height * 2; // Make it tall enough
+    const chunkHeightPixels = this.scene.scale.height; // Make it tall enough
 
     const chunkWidthPixels = chunkSize * tileSize;
 
 
     // --- Vertex Generation ---
     const surfaceVertices = [];
-    const terrainNoiseScale = 50;
-    const terrainAmplitude = 15 * tileSize; // Amplitude in pixels
+    const terrainNoiseScale = 150; // Larger value for longer, smoother hills
+    const terrainAmplitude = 4 * tileSize; // Smaller value for gentler slopes
     const worldCenterY = this.scene.scale.height / 1.5; // Base height in pixels
-    const step = 32; // Generate a vertex every 32 pixels (one tile)
+    const step = 16; // Smaller step for a smoother curve
 
     for (let x = 0; x <= chunkWidthPixels; x += step) {
       const worldX = chunkWorldX + x;
@@ -57,7 +57,10 @@ export default class LevelGenerator {
     ];
 
     // --- Create Matter Body ---
-    const terrainBody = this.scene.matter.add.fromVertices(0, 0, groundPolygon, { isStatic: true });
+    const bounds = Phaser.Geom.Polygon.GetAABB(new Phaser.Geom.Polygon(groundPolygon));
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    const terrainBody = this.scene.matter.add.fromVertices(centerX, centerY, groundPolygon, { isStatic: true });
 
 
     // --- Visuals ---
@@ -87,14 +90,14 @@ export default class LevelGenerator {
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
     const chunkX = 0;
     const chunkWidthPixels = chunkSize * tileSize;
-    const chunkHeightPixels = this.scene.scale.height * 2;
+    const chunkHeightPixels = this.scene.scale.height;
 
     // --- Vertex Generation ---
     const surfaceVertices = [];
-    const terrainNoiseScale = 50;
-    const terrainAmplitude = 15 * tileSize;
+    const terrainNoiseScale = 150; // Larger value for longer, smoother hills
+    const terrainAmplitude = 4 * tileSize; // Smaller value for gentler slopes
     const worldCenterY = this.scene.scale.height / 1.5;
-    const step = 32;
+    const step = 16; // Smaller step for a smoother curve
 
     for (let x = 0; x <= chunkWidthPixels; x += step) {
       const worldX = x; // For initial chunk, worldX is same as local x
@@ -140,7 +143,10 @@ export default class LevelGenerator {
     ];
 
     // --- Create Matter Body ---
-    const terrainBody = this.scene.matter.add.fromVertices(0, 0, groundPolygon, { isStatic: true });
+    const bounds = Phaser.Geom.Polygon.GetAABB(new Phaser.Geom.Polygon(groundPolygon));
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    const terrainBody = this.scene.matter.add.fromVertices(centerX, centerY, groundPolygon, { isStatic: true });
 
 
     // --- Visuals ---
