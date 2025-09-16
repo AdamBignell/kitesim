@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
 import { createNoise2D } from 'simplex-noise';
-import Grid from './generation/Grid';
+// Grid and GreedyMesher are no longer needed
+// import Grid from './generation/Grid';
+// import GreedyMesher from './generation/GreedyMesher';
 import * as Structures from './generation/structures';
 import { createFloor } from './generation/MegaStructure';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
-import GreedyMesher from './generation/GreedyMesher';
 import SplinePathGenerator from './generation/SplinePathGenerator';
 import RhythmNodeCalculator from './generation/RhythmNodeCalculator';
 
@@ -18,217 +19,143 @@ export default class LevelGenerator {
     this.pathGenerator = new SplinePathGenerator(rhythmCalculator);
   }
 
+  // --- NEW generateChunk ---
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
-    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
-    const newPlatforms = this.scene.physics.add.staticGroup();
+    const chunkWorldX = chunkX * chunkSize * tileSize;
+    // Using scene height for vertical bounds is more robust for a scrolling world
+    const chunkWorldY = 0; // Top of the world
+    const chunkHeightPixels = this.scene.scale.height * 2; // Make it tall enough
 
-    // --- Spline and Noise-based Terrain Generation ---
-    const terrainNoiseScale = 50; // Controls the "zoom" level of the noise
-    const terrainAmplitude = 15;   // Controls the max height variation of the hills
-    const worldCenterY = chunkSize / 2;
+    const chunkWidthPixels = chunkSize * tileSize;
 
-    for (let x = 0; x < chunkSize; x++) {
-      const worldX = (chunkX * chunkSize) + x;
 
-      // 1. Get the base height from the spline
-      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20); // Scale worldX to match spline's scale
-      const splineHeight = splinePoint.y;
-
-      // 2. Add noise for local variation
-      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
-      const noiseOffset = noiseValue * terrainAmplitude;
-
-      // 3. Combine them to get the final terrain height
-      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
-
-      for (let y = terrainHeight; y < chunkSize; y++) {
-        if (y >= 0 && y < chunkSize) {
-          chunkGrid.setTile(x, y, 1);
-        }
-      }
-    }
-
-    // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25; // How "zoomed-in" the cave noise is
-    const caveThreshold = 0.6; // Value above which a tile becomes empty space
-
-    for (let x = 0; x < chunkSize; x++) {
-      for (let y = 0; y < chunkSize; y++) {
-        // Only try to carve caves below the surface
-        if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
-
-          // We also check that we are not carving the top-most layer of the terrain
-          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
-
-          if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile
-          }
-        }
-      }
-    }
-
-    // --- Place Rhythm-Based Platforms (after cave carving) ---
-    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
-    const platformWidth = 3;
-
-    for (const node of nodes) {
-      // Convert node's unit coordinates back to tile coordinates
-      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
-      const tileY = Math.round(worldCenterY + node.y);
-
-      // Clear space above the platform for headroom
-      for (let y = tileY - 5; y < tileY; y++) {
-        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
-          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-            chunkGrid.setTile(x, y, 0);
-          }
-        }
-      }
-
-      // Place the platform itself, ensuring it's solid
-      for (let x = tileX; x < tileX + platformWidth; x++) {
-        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
-          chunkGrid.setTile(x, tileY, 1);
-        }
-      }
-    }
-
-    const meshes = GreedyMesher.mesh(chunkGrid);
-    for (const mesh of meshes) {
-      const tileWorldX = (chunkX * chunkSize) + mesh.x;
-      const tileWorldY = (chunkY * chunkSize) + mesh.y;
-      const platformX = tileWorldX * tileSize;
-      const platformY = tileWorldY * tileSize;
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
-      newPlatform.setOrigin(0,0);
-      this.scene.physics.add.existing(newPlatform, true);
-      newPlatforms.add(newPlatform);
-    }
-
-    return { platforms: newPlatforms, grid: chunkGrid };
-  }
-
-  generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
-    const chunkX = 0;
-    const chunkY = 0;
-    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
-    const newPlatforms = this.scene.physics.add.staticGroup();
-
-    // --- Spline and Noise-based Terrain Generation for the initial chunk ---
+    // --- Vertex Generation ---
+    const surfaceVertices = [];
     const terrainNoiseScale = 50;
-    const terrainAmplitude = 15;
-    const worldCenterY = chunkSize / 2;
+    const terrainAmplitude = 15 * tileSize; // Amplitude in pixels
+    const worldCenterY = this.scene.scale.height / 1.5; // Base height in pixels
+    const step = 32; // Generate a vertex every 32 pixels (one tile)
 
-    for (let x = 0; x < chunkSize; x++) {
-      const worldX = (chunkX * chunkSize) + x;
+    for (let x = 0; x <= chunkWidthPixels; x += step) {
+      const worldX = chunkWorldX + x;
 
       const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
-      const splineHeight = splinePoint.y;
+      const splineHeight = splinePoint.y * tileSize / 10; // Adjust spline scale
 
       const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
       const noiseOffset = noiseValue * terrainAmplitude;
 
-      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
+      const terrainHeight = worldCenterY + splineHeight + noiseOffset;
+      surfaceVertices.push({ x: worldX, y: terrainHeight });
+    }
 
-      for (let y = terrainHeight; y < chunkSize; y++) {
-        if (y >= 0 && y < chunkSize) {
-          chunkGrid.setTile(x, y, 1);
+    // --- Create Polygon Shape ---
+    const groundPolygon = [
+      ...surfaceVertices,
+      { x: chunkWorldX + chunkWidthPixels, y: chunkWorldY + chunkHeightPixels },
+      { x: chunkWorldX, y: chunkWorldY + chunkHeightPixels }
+    ];
+
+    // --- Create Matter Body ---
+    const terrainBody = this.scene.matter.add.fromVertices(0, 0, groundPolygon, { isStatic: true });
+
+
+    // --- Visuals ---
+    // The container will hold the graphics and a reference to the Matter body
+    // This makes cleanup easier when the chunk is unloaded.
+    const graphics = this.scene.add.graphics();
+    graphics.fillStyle(0x228B22, 1); // ForestGreen
+    graphics.fillPoints(groundPolygon);
+
+    const container = this.scene.add.container(0, 0, [graphics]);
+    container.setData('matterBody', terrainBody);
+    // Override the container's destroy method to also remove the Matter body
+    container.destroy = function() {
+        graphics.destroy();
+        // 'this' refers to the container instance
+        this.scene.matter.world.remove(this.getData('matterBody'));
+        // Call original destroy method
+        Phaser.GameObjects.Container.prototype.destroy.call(this);
+    };
+
+
+    return { platforms: container };
+  }
+
+
+  // --- NEW generateInitialChunkAndSpawnPoint ---
+  generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
+    const chunkX = 0;
+    const chunkWidthPixels = chunkSize * tileSize;
+    const chunkHeightPixels = this.scene.scale.height * 2;
+
+    // --- Vertex Generation ---
+    const surfaceVertices = [];
+    const terrainNoiseScale = 50;
+    const terrainAmplitude = 15 * tileSize;
+    const worldCenterY = this.scene.scale.height / 1.5;
+    const step = 32;
+
+    for (let x = 0; x <= chunkWidthPixels; x += step) {
+      const worldX = x; // For initial chunk, worldX is same as local x
+
+      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
+      const splineHeight = splinePoint.y * tileSize / 10;
+
+      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseOffset = noiseValue * terrainAmplitude;
+
+      const terrainHeight = worldCenterY + splineHeight + noiseOffset;
+      surfaceVertices.push({ x: worldX, y: terrainHeight });
+    }
+
+    // --- Find Spawn Point ---
+    const safeZoneTileX = 3; // ~3rd tile in
+    const searchWorldX = safeZoneTileX * tileSize;
+    let groundY = worldCenterY; // fallback
+
+    // Find the terrain height at our desired spawn X by finding the closest vertex
+    let closestVertex = surfaceVertices[0];
+    let minDistance = Infinity;
+    for(const vertex of surfaceVertices) {
+        const distance = Math.abs(vertex.x - searchWorldX);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestVertex = vertex;
         }
-      }
     }
+    groundY = closestVertex.y;
 
-    // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25;
-    const caveThreshold = 0.6;
+    const spawnPoint = {
+        x: searchWorldX,
+        y: groundY - (tileSize * 3) // Spawn 3 tiles above the ground
+    };
 
-    for (let x = 0; x < chunkSize; x++) {
-      for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
-          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
-          if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0);
-          }
-        }
-      }
-    }
 
-    // --- Place Rhythm-Based Platforms (after cave carving) ---
-    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
-    const platformWidth = 3;
+    // --- Create Polygon Shape ---
+    const groundPolygon = [
+      ...surfaceVertices,
+      { x: chunkWidthPixels, y: chunkHeightPixels },
+      { x: 0, y: chunkHeightPixels }
+    ];
 
-    for (const node of nodes) {
-      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
-      const tileY = Math.round(worldCenterY + node.y);
-      for (let y = tileY - 5; y < tileY; y++) {
-        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
-          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-            chunkGrid.setTile(x, y, 0);
-          }
-        }
-      }
-      for (let x = tileX; x < tileX + platformWidth; x++) {
-        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
-          chunkGrid.setTile(x, tileY, 1);
-        }
-      }
-    }
+    // --- Create Matter Body ---
+    const terrainBody = this.scene.matter.add.fromVertices(0, 0, groundPolygon, { isStatic: true });
 
-    // Now, create a safe zone for the player to spawn in
-    const safeZone = { x: 1, y: 12, width: 5, height: 5 };
-    for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
-        for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
-            if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-                chunkGrid.setTile(x, y, 0); // Clear out any terrain in the safe zone
-            }
-        }
-    }
 
-    // Find a safe spawn point within the cleared safe zone
-    const searchX = safeZone.x + Math.floor(safeZone.width / 2);
-    let groundY = -1;
+    // --- Visuals ---
+    const graphics = this.scene.add.graphics();
+    graphics.fillStyle(0x228B22, 1); // ForestGreen
+    graphics.fillPoints(groundPolygon);
 
-    // Scan downwards from the top of the chunk to find the first solid tile in our search column
-    for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(searchX, y) === 1) {
-            groundY = y;
-            break;
-        }
-    }
+    const container = this.scene.add.container(0, 0, [graphics]);
+    container.setData('matterBody', terrainBody);
+    container.destroy = function() {
+        graphics.destroy();
+        this.scene.matter.world.remove(this.getData('matterBody'));
+        Phaser.GameObjects.Container.prototype.destroy.call(this);
+    };
 
-    let spawnPoint;
-    if (groundY !== -1) {
-        // We found ground. The spawn point should be slightly above it.
-        const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
-        // Place the player 2 tiles above the ground to prevent spawning inside it
-        const spawnY = (chunkY * chunkSize + groundY) * tileSize - (tileSize * 2);
-        spawnPoint = { x: spawnX, y: spawnY };
-    } else {
-        // Fallback: If no ground is found in the search column (highly unlikely),
-        // spawn in the middle of the safe zone.
-        const fallbackX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
-        const fallbackY = (chunkY * chunkSize + safeZone.y + Math.floor(safeZone.height / 2)) * tileSize + tileSize / 2;
-        spawnPoint = { x: fallbackX, y: fallbackY };
-    }
-
-    // Finally, create the platform bodies from the modified chunkGrid
-    const meshes = GreedyMesher.mesh(chunkGrid);
-    for (const mesh of meshes) {
-      const tileWorldX = (chunkX * chunkSize) + mesh.x;
-      const tileWorldY = (chunkY * chunkSize) + mesh.y;
-      const platformX = tileWorldX * tileSize;
-      const platformY = tileWorldY * tileSize;
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
-      newPlatform.setOrigin(0,0);
-      this.scene.physics.add.existing(newPlatform, true);
-      newPlatforms.add(newPlatform);
-    }
-
-    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
+    return { platforms: container, spawnPoint };
   }
 }

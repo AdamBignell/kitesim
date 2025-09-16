@@ -12,10 +12,10 @@ const phaserConfig = {
   // The 'parent' property will be set dynamically in our React component.
   // We'll leave it out here.
   physics: {
-    default: 'arcade',
-    arcade: {
-      gravity: { y: 1500 }, // Change this value
-      debug: false
+    default: 'matter',
+    matter: {
+      gravity: { y: 1 }, // Matter.js uses a different gravity scale
+      debug: true // Enable debug drawing to see physics bodies
     }
   },
   scene: [

@@ -37,11 +37,33 @@ describe('GameScene', () => {
     scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
 
     // Mock the necessary properties on the scene instance
+    scene.matter = {
+      add: {
+        sprite: jest.fn().mockReturnValue({
+          setRectangle: jest.fn(),
+          setFixedRotation: jest.fn(),
+          setFriction: jest.fn(),
+          anims: {
+            play: jest.fn(),
+          },
+          body: {
+            velocity: { x: 0, y: 0 }
+          },
+          setFlipX: jest.fn(),
+        }),
+      },
+      world: {
+        on: jest.fn(),
+      },
+      config: {
+          gravity: { y: 1 }
+      }
+    };
     scene.physics = scene.sys.game.scene.scenes[0].physics;
     scene.anims = scene.sys.game.scene.scenes[0].anims;
     scene.input = scene.sys.game.scene.scenes[0].input;
     scene.time = scene.sys.game.scene.scenes[0].time;
-    scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn() } };
+    scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn(), setZoom: jest.fn() } };
     scene.add = {
       graphics: jest.fn().mockReturnValue({
         fillStyle: jest.fn(),
@@ -71,7 +93,7 @@ describe('GameScene', () => {
   it('should create the player at the spawn point', () => {
     scene.create();
     // The player is created at the spawnPoint from the level generator
-    expect(scene.physics.add.sprite).toHaveBeenCalledWith(150, 250, 'idle');
+    expect(scene.matter.add.sprite).toHaveBeenCalledWith(150, 250, 'idle', null, expect.any(Object));
   });
 
   it('should have a togglePlayerControl method', () => {
