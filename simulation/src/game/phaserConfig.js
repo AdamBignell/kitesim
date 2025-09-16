@@ -1,27 +1,30 @@
 import * as Phaser from 'phaser';
-import GameScene from './GameScene';
 
-const phaserConfig = {
-  type: Phaser.AUTO, // Automatically choose between WebGL or Canvas
-  width: 1280,
-  height: 720,
-  scale: {
-    mode: Phaser.Scale.FIT, // Scale the game to fit the container while maintaining aspect ratio
-    autoCenter: Phaser.Scale.CENTER_BOTH // Center the game canvas horizontally and vertically
-  },
-  // The 'parent' property will be set dynamically in our React component.
-  // We'll leave it out here.
-  physics: {
-    default: 'arcade',
+const getPhaserConfig = (mode, scene) => {
+  const physicsConfig = {
+    default: mode,
     arcade: {
-      gravity: { y: 1500 }, // Change this value
+      gravity: { y: 1500 },
       debug: false
+    },
+    matter: {
+      gravity: { y: 1 },
+      debug: true
     }
-  },
-  scene: [
-    GameScene // Add our scene to the game
-  ],
-  backgroundColor: '#000000',
+  };
+
+  return {
+    type: Phaser.AUTO,
+    width: 1280,
+    height: 720,
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    physics: physicsConfig,
+    scene: [scene], // Use the dynamically imported scene
+    backgroundColor: '#000000',
+  };
 };
 
-export default phaserConfig;
+export default getPhaserConfig;

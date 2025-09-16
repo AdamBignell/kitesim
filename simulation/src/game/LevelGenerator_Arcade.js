@@ -1,9 +1,6 @@
-import * as Phaser from 'phaser';
 import { createNoise2D } from 'simplex-noise';
 import Grid from './generation/Grid';
 import * as Structures from './generation/structures';
-import { createFloor } from './generation/MegaStructure';
-import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 import GreedyMesher from './generation/GreedyMesher';
 import SplinePathGenerator from './generation/SplinePathGenerator';
 import RhythmNodeCalculator from './generation/RhythmNodeCalculator';

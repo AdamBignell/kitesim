@@ -1,9 +1,9 @@
-import GameScene from '../src/game/GameScene';
+import GameScene from '../src/game/GameScene_Arcade';
 import * as Phaser from 'phaser';
-import LevelGenerator from '../src/game/LevelGenerator';
+import LevelGenerator from '../src/game/LevelGenerator_Arcade';
 
 // The phaser module is mocked in jest.config.js
-jest.mock('../src/game/LevelGenerator', () => {
+jest.mock('../src/game/LevelGenerator_Arcade', () => {
     return jest.fn().mockImplementation(() => {
         return {
             generateChunk: jest.fn().mockReturnValue({
@@ -37,11 +37,33 @@ describe('GameScene', () => {
     scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
 
     // Mock the necessary properties on the scene instance
+    scene.matter = {
+      add: {
+        sprite: jest.fn().mockReturnValue({
+          setRectangle: jest.fn(),
+          setFixedRotation: jest.fn(),
+          setFriction: jest.fn(),
+          anims: {
+            play: jest.fn(),
+          },
+          body: {
+            velocity: { x: 0, y: 0 }
+          },
+          setFlipX: jest.fn(),
+        }),
+      },
+      world: {
+        on: jest.fn(),
+      },
+      config: {
+          gravity: { y: 1 }
+      }
+    };
     scene.physics = scene.sys.game.scene.scenes[0].physics;
     scene.anims = scene.sys.game.scene.scenes[0].anims;
     scene.input = scene.sys.game.scene.scenes[0].input;
     scene.time = scene.sys.game.scene.scenes[0].time;
-    scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn() } };
+    scene.cameras = { main: { setBackgroundColor: jest.fn(), startFollow: jest.fn(), setZoom: jest.fn() } };
     scene.add = {
       graphics: jest.fn().mockReturnValue({
         fillStyle: jest.fn(),

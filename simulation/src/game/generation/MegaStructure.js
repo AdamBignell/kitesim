@@ -10,8 +10,7 @@ export function createFloor(width, {
     maxStepHeight = 2, // Max height player can walk up without jumping
     // Terrain feature probabilities
     flatProbability = 0.3,
-    slopeProbability = 0.5,
-    wallProbability = 0.2
+    slopeProbability = 0.5
 }) {
     const grid = new Grid(width, height, 0);
     let currentHeight = height - bottomPadding - 20;

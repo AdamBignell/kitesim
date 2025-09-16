@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import LevelGenerator from './LevelGenerator';
+import LevelGenerator from './LevelGenerator_Arcade';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 
 export default class GameScene extends Phaser.Scene {

@@ -1,42 +1,63 @@
 'use client'; // This directive is crucial for Next.js App Router
 
 import { useEffect, useRef, useState } from 'react';
-import phaserConfig from '../game/phaserConfig';
+
+import getPhaserConfig from '../game/phaserConfig';
 
 // We import Phaser dynamically to ensure it's only loaded on the client side.
-// This is critical for Next.js which does server-side rendering.
-const initializePhaser = () => import('phaser').then(Phaser => {
-  return new Promise(resolve => {
-    // The main game instance
-    const game = new Phaser.Game({
-      ...phaserConfig,
-      parent: 'phaser-container', // Link to the div ID in our component
-    });
-    resolve(game);
+const initializePhaser = async (mode) => {
+  const Phaser = await import('phaser');
+  let GameScene;
+
+  if (mode === 'matter') {
+    // Dynamically import the Matter.js scene
+    const sceneModule = await import('../game/GameScene_Matter.js');
+    GameScene = sceneModule.default;
+  } else {
+    // Dynamically import the Arcade scene
+    const sceneModule = await import('../game/GameScene_Arcade.js');
+    GameScene = sceneModule.default;
+  }
+
+  // Get the dynamic config
+  const config = getPhaserConfig(mode, GameScene);
+
+  // The main game instance
+  const game = new Phaser.Game({
+    ...config,
+    parent: 'phaser-container', // Link to the div ID in our component
   });
-});
+
+  return game;
+};
 
 const PhaserGame = () => {
   const gameRef = useRef(null);
   const [isPlayerControlled, setIsPlayerControlled] = useState(false);
-
+  const [physicsMode, setPhysicsMode] = useState('arcade');
+  const [gameKey, setGameKey] = useState(0); // Used to force re-mount
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !gameRef.current) {
-      // Initialize the game only once
-      initializePhaser().then(game => {
+    // On component mount, read the saved mode from localStorage
+    const savedMode = localStorage.getItem('physicsMode') || 'arcade';
+    setPhysicsMode(savedMode);
+  }, []);
+
+  useEffect(() => {
+    // This effect now depends on gameKey, so it will re-run when the key changes
+    if (typeof window !== 'undefined') {
+      initializePhaser(physicsMode).then(game => {
         gameRef.current = game;
       });
     }
 
-    // Cleanup function to destroy the game instance when the component unmounts
     return () => {
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;
       }
     };
-  }, []); // The empty dependency array ensures this runs only once on mount
+  }, [gameKey, physicsMode]);
 
   const handleToggleControl = (e) => {
     if (gameRef.current) {
@@ -50,29 +71,43 @@ const PhaserGame = () => {
     e.target.blur();
   };
 
+  const handleModeChange = (mode) => {
+    localStorage.setItem('physicsMode', mode);
+    setPhysicsMode(mode);
+    setGameKey(prevKey => prevKey + 1); // Change key to force re-mount
+  };
+
+  const buttonStyle = {
+    padding: '10px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    color: 'white',
+    border: '1px solid white',
+    borderRadius: '5px',
+    margin: '5px'
+  };
 
   // This div is where the Phaser canvas will be injected.
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div key={gameKey} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
-      <button
-        onClick={handleToggleControl}
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px',
-          fontSize: '14px',
-          cursor: 'pointer',
-          zIndex: 10,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          color: 'white',
-          border: '1px solid white',
-          borderRadius: '5px'
-        }}
-      >
-        <span role="img" aria-label="spiral">🌀</span> {isPlayerControlled ? 'Release' : 'Possess'}
-      </button>
+      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column' }}>
+        <button onClick={handleToggleControl} style={buttonStyle}>
+          <span role="img" aria-label="spiral">🌀</span> {isPlayerControlled ? 'Release' : 'Possess'}
+        </button>
+        <div style={{ marginTop: '10px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '5px' }}>
+          <h3 style={{ color: 'white', margin: '0 0 10px 0', fontSize: '16px', textAlign: 'center' }}>Debug Menu</h3>
+          <p style={{color: 'white', margin: '0 0 5px 0', fontSize: '12px'}}>Current: {physicsMode}</p>
+          <button onClick={() => handleModeChange('arcade')} style={buttonStyle}>
+            Arcade
+          </button>
+          <button onClick={() => handleModeChange('matter')} style={buttonStyle}>
+            Matter
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
