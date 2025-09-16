@@ -33,7 +33,7 @@ export default class LevelGenerator {
       newPlatforms.add(newPlatform);
     }
 
-    return newPlatforms;
+    return { platforms: newPlatforms, grid: chunkGrid };
   }
 
   placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY) {
@@ -143,20 +143,21 @@ export default class LevelGenerator {
       newPlatforms.add(newPlatform);
     }
 
-    return { platforms: newPlatforms, spawnPoint };
+    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
   }
 
   canPlace(chunkGrid, structure, x, y, placedStructures) {
+    const padding = 1; // The amount of empty space to require around structures
     if (x < 0 || y < 0 || x + structure.width > chunkGrid.width || y + structure.height > chunkGrid.height) {
       return false;
     }
 
     for (const placed of placedStructures) {
-        // Check for bounding box collision
-        if (x < placed.x + placed.structure.width &&
-            x + structure.width > placed.x &&
-            y < placed.y + placed.structure.height &&
-            y + structure.height > placed.y) {
+        // Check for bounding box collision with padding
+        if (x < placed.x + placed.structure.width + padding &&
+            x + structure.width + padding > placed.x &&
+            y < placed.y + placed.structure.height + padding &&
+            y + structure.height + padding > placed.y) {
           return false; // Collision detected
         }
       }
