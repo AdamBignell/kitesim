@@ -1,7 +1,6 @@
 'use client'; // This directive is crucial for Next.js App Router
 
 import { useEffect, useRef, useState } from 'react';
-import phaserConfig from '../game/phaserConfig';
 
 import getPhaserConfig from '../game/phaserConfig';
 
@@ -12,12 +11,12 @@ const initializePhaser = async (mode) => {
 
   if (mode === 'matter') {
     // Dynamically import the Matter.js scene
-    const module = await import('../game/GameScene_Matter.js');
-    GameScene = module.default;
+    const sceneModule = await import('../game/GameScene_Matter.js');
+    GameScene = sceneModule.default;
   } else {
     // Dynamically import the Arcade scene
-    const module = await import('../game/GameScene_Arcade.js');
-    GameScene = module.default;
+    const sceneModule = await import('../game/GameScene_Arcade.js');
+    GameScene = sceneModule.default;
   }
 
   // Get the dynamic config
@@ -58,7 +57,7 @@ const PhaserGame = () => {
         gameRef.current = null;
       }
     };
-  }, [gameKey]);
+  }, [gameKey, physicsMode]);
 
   const handleToggleControl = (e) => {
     if (gameRef.current) {

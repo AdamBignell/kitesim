@@ -1,8 +1,6 @@
 import * as Phaser from 'phaser';
 import { createNoise2D } from 'simplex-noise';
 import * as Structures from './generation/structures';
-import { createFloor } from './generation/MegaStructure';
-import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 import SplinePathGenerator from './generation/SplinePathGenerator';
 import RhythmNodeCalculator from './generation/RhythmNodeCalculator';
 
@@ -66,7 +64,6 @@ export default class LevelGenerator {
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
-    const chunkX = 0;
     const chunkWidthPixels = chunkSize * tileSize;
     const chunkHeightPixels = this.scene.scale.height;
 

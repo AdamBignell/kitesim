@@ -1,8 +1,6 @@
 import * as Phaser from 'phaser';
 
 const getPhaserConfig = (mode, scene) => {
-  const isMatter = mode === 'matter';
-
   const physicsConfig = {
     default: mode,
     arcade: {

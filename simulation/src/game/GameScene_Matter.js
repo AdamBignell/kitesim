@@ -72,13 +72,10 @@ export default class GameScene extends Phaser.Scene {
     this.matter.world.on('collisionactive', (event) => {
       for (let i = 0; i < event.pairs.length; i++) {
         const pair = event.pairs[i];
-        let playerBody;
         let otherBody;
         if (pair.bodyA.label === 'player') {
-          playerBody = pair.bodyA;
           otherBody = pair.bodyB;
         } else if (pair.bodyB.label === 'player') {
-          playerBody = pair.bodyB;
           otherBody = pair.bodyA;
         } else {
           continue;
