@@ -1,23 +1,100 @@
 import * as Phaser from 'phaser';
+import { createNoise2D } from 'simplex-noise';
 import Grid from './generation/Grid';
 import * as Structures from './generation/structures';
 import { createFloor } from './generation/MegaStructure';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 import GreedyMesher from './generation/GreedyMesher';
+import SplinePathGenerator from './generation/SplinePathGenerator';
+import RhythmNodeCalculator from './generation/RhythmNodeCalculator';
 
 export default class LevelGenerator {
   constructor(scene, pcp) {
     this.scene = scene;
     this.structures = Object.values(Structures);
     this.pcp = pcp;
+    this.noise = createNoise2D();
+    const rhythmCalculator = new RhythmNodeCalculator(pcp);
+    this.pathGenerator = new SplinePathGenerator(rhythmCalculator);
   }
 
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
     const chunkGrid = new Grid(chunkSize, chunkSize, 0);
     const newPlatforms = this.scene.physics.add.staticGroup();
-    const placedStructures = [];
 
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    // --- Spline and Noise-based Terrain Generation ---
+    const terrainNoiseScale = 50; // Controls the "zoom" level of the noise
+    const terrainAmplitude = 15;   // Controls the max height variation of the hills
+    const worldCenterY = chunkSize / 2;
+
+    for (let x = 0; x < chunkSize; x++) {
+      const worldX = (chunkX * chunkSize) + x;
+
+      // 1. Get the base height from the spline
+      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20); // Scale worldX to match spline's scale
+      const splineHeight = splinePoint.y;
+
+      // 2. Add noise for local variation
+      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseOffset = noiseValue * terrainAmplitude;
+
+      // 3. Combine them to get the final terrain height
+      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
+
+      for (let y = terrainHeight; y < chunkSize; y++) {
+        if (y >= 0 && y < chunkSize) {
+          chunkGrid.setTile(x, y, 1);
+        }
+      }
+    }
+
+    // --- 2D Noise for Cave Generation ---
+    const caveNoiseScale = 25; // How "zoomed-in" the cave noise is
+    const caveThreshold = 0.6; // Value above which a tile becomes empty space
+
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        // Only try to carve caves below the surface
+        if (chunkGrid.getTile(x, y) === 1) {
+          const worldX = (chunkX * chunkSize) + x;
+          const worldY = (chunkY * chunkSize) + y;
+          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+
+          // We also check that we are not carving the top-most layer of the terrain
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+
+          if (caveNoiseValue > caveThreshold && !isSurface) {
+            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile
+          }
+        }
+      }
+    }
+
+    // --- Place Rhythm-Based Platforms (after cave carving) ---
+    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
+    const platformWidth = 3;
+
+    for (const node of nodes) {
+      // Convert node's unit coordinates back to tile coordinates
+      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
+      const tileY = Math.round(worldCenterY + node.y);
+
+      // Clear space above the platform for headroom
+      for (let y = tileY - 5; y < tileY; y++) {
+        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
+          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+
+      // Place the platform itself, ensuring it's solid
+      for (let x = tileX; x < tileX + platformWidth; x++) {
+        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
+          chunkGrid.setTile(x, tileY, 1);
+        }
+      }
+    }
 
     const meshes = GreedyMesher.mesh(chunkGrid);
     for (const mesh of meshes) {
@@ -34,62 +111,73 @@ export default class LevelGenerator {
     return { platforms: newPlatforms, grid: chunkGrid };
   }
 
-  placeStructures(chunkGrid, placedStructures, width, height, chunkX, chunkY) {
-    const floor = createFloor(width, { height: height });
-    this.placeStructure(chunkGrid, { structure: floor, x: 0, y: 0 }, placedStructures);
-
-    // Fill in below the floor to make it solid
-    for (let x = 0; x < width; x++) {
-      let firstTile = -1;
-      for (let y = 0; y < height; y++) {
-        if (chunkGrid.getTile(x, y) === 1) {
-          firstTile = y;
-          break;
-        }
-      }
-
-      if (firstTile !== -1) {
-        for (let y = firstTile; y < height; y++) {
-          this.placeStructure(chunkGrid, { structure: Structures.filler, x, y }, placedStructures);
-        }
-      }
-    }
-
-    // Add some features on top of the floor
-    for (let i = 0; i < 10; i++) {
-      const structure = this.structures[Math.floor(Math.random() * this.structures.length)];
-      const x = Math.floor(Math.random() * (width - structure.width));
-      const y = Math.floor(Math.random() * (height - structure.height));
-
-      const isFloating = Math.random() < 0.2; // 20% chance to be a floating island
-
-      // Ensure the structure is placed on top of the floor, unless it's a floating island
-      let isOnFloor = false;
-      if (!isFloating) {
-        for(let sx=0; sx<structure.width; sx++) {
-            if(chunkGrid.getTile(x+sx, y+structure.height) === 1) {
-                isOnFloor = true;
-                break;
-            }
-        }
-      }
-
-      if ((isFloating || isOnFloor) && this.canPlace(chunkGrid, structure, x, y, placedStructures)) {
-        this.placeStructure(chunkGrid, { structure, x, y }, placedStructures);
-      }
-    }
-
-  }
-
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
     const chunkX = 0;
     const chunkY = 0;
     const chunkGrid = new Grid(chunkSize, chunkSize, 0);
     const newPlatforms = this.scene.physics.add.staticGroup();
-    const placedStructures = [];
 
-    // First, place all the structures for the initial chunk
-    this.placeStructures(chunkGrid, placedStructures, chunkSize, chunkSize, chunkX, chunkY);
+    // --- Spline and Noise-based Terrain Generation for the initial chunk ---
+    const terrainNoiseScale = 50;
+    const terrainAmplitude = 15;
+    const worldCenterY = chunkSize / 2;
+
+    for (let x = 0; x < chunkSize; x++) {
+      const worldX = (chunkX * chunkSize) + x;
+
+      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
+      const splineHeight = splinePoint.y;
+
+      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseOffset = noiseValue * terrainAmplitude;
+
+      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
+
+      for (let y = terrainHeight; y < chunkSize; y++) {
+        if (y >= 0 && y < chunkSize) {
+          chunkGrid.setTile(x, y, 1);
+        }
+      }
+    }
+
+    // --- 2D Noise for Cave Generation ---
+    const caveNoiseScale = 25;
+    const caveThreshold = 0.6;
+
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          const worldX = (chunkX * chunkSize) + x;
+          const worldY = (chunkY * chunkSize) + y;
+          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+          if (caveNoiseValue > caveThreshold && !isSurface) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+    }
+
+    // --- Place Rhythm-Based Platforms (after cave carving) ---
+    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
+    const platformWidth = 3;
+
+    for (const node of nodes) {
+      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
+      const tileY = Math.round(worldCenterY + node.y);
+      for (let y = tileY - 5; y < tileY; y++) {
+        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
+          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+      for (let x = tileX; x < tileX + platformWidth; x++) {
+        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
+          chunkGrid.setTile(x, tileY, 1);
+        }
+      }
+    }
 
     // Now, create a safe zone for the player to spawn in
     const safeZone = { x: 1, y: 12, width: 5, height: 5 };
@@ -142,35 +230,5 @@ export default class LevelGenerator {
     }
 
     return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
-  }
-
-  canPlace(chunkGrid, structure, x, y, placedStructures) {
-    const padding = 1; // The amount of empty space to require around structures
-    if (x < 0 || y < 0 || x + structure.width > chunkGrid.width || y + structure.height > chunkGrid.height) {
-      return false;
-    }
-
-    for (const placed of placedStructures) {
-        // Check for bounding box collision with padding
-        if (x < placed.x + placed.structure.width + padding &&
-            x + structure.width + padding > placed.x &&
-            y < placed.y + placed.structure.height + padding &&
-            y + structure.height + padding > placed.y) {
-          return false; // Collision detected
-        }
-      }
-
-    return true;
-  }
-
-  placeStructure(chunkGrid, placed, placedStructures) {
-    placedStructures.push(placed);
-    for (let sy = 0; sy < placed.structure.height; sy++) {
-      for (let sx = 0; sx < placed.structure.width; sx++) {
-        if (placed.structure.grid.getTile(sx, sy) === 1) {
-          chunkGrid.setTile(placed.x + sx, placed.y + sy, 1);
-        }
-      }
-    }
   }
 }
