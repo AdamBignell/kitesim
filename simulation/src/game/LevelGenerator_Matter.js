@@ -43,22 +43,19 @@ export default class LevelGenerator {
       { x: chunkWorldX, y: chunkWorldY + chunkHeightPixels }
     ];
 
-    const graphics = this.scene.add.graphics();
-    graphics.fillStyle(0x228B22, 1);
-    graphics.fillPoints(groundPolygon);
+    const bounds = Phaser.Geom.Polygon.GetAABB(new Phaser.Geom.Polygon(groundPolygon));
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
 
-    this.scene.matter.add.gameObject(graphics, {
-        shape: {
-            type: 'fromVerts',
-            verts: groundPolygon,
-            flagInternal: true
-        },
-        isStatic: true
-    });
+    const relativeVertices = groundPolygon.map(v => ({ x: v.x - centerX, y: v.y - centerY }));
 
-    const container = this.scene.add.container(0, 0, [graphics]);
+    const terrainPolygon = this.scene.add.polygon(centerX, centerY, relativeVertices, 0x228B22);
+
+    this.scene.matter.add.gameObject(terrainPolygon, { isStatic: true });
+
+    const container = this.scene.add.container(0, 0, [terrainPolygon]);
     container.destroy = function() {
-        // The container's destroy method will automatically destroy the graphics object,
+        // The container's destroy method will automatically destroy the polygon object,
         // which in turn will automatically remove its associated Matter body from the world.
         Phaser.GameObjects.Container.prototype.destroy.call(this);
     };
@@ -111,22 +108,19 @@ export default class LevelGenerator {
       { x: 0, y: chunkHeightPixels }
     ];
 
-    const graphics = this.scene.add.graphics();
-    graphics.fillStyle(0x228B22, 1);
-    graphics.fillPoints(groundPolygon);
+    const bounds = Phaser.Geom.Polygon.GetAABB(new Phaser.Geom.Polygon(groundPolygon));
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
 
-    this.scene.matter.add.gameObject(graphics, {
-        shape: {
-            type: 'fromVerts',
-            verts: groundPolygon,
-            flagInternal: true
-        },
-        isStatic: true
-    });
+    const relativeVertices = groundPolygon.map(v => ({ x: v.x - centerX, y: v.y - centerY }));
 
-    const container = this.scene.add.container(0, 0, [graphics]);
+    const terrainPolygon = this.scene.add.polygon(centerX, centerY, relativeVertices, 0x228B22);
+
+    this.scene.matter.add.gameObject(terrainPolygon, { isStatic: true });
+
+    const container = this.scene.add.container(0, 0, [terrainPolygon]);
     container.destroy = function() {
-        // The container's destroy method will automatically destroy the graphics object,
+        // The container's destroy method will automatically destroy the polygon object,
         // which in turn will automatically remove its associated Matter body from the world.
         Phaser.GameObjects.Container.prototype.destroy.call(this);
     };

@@ -14,15 +14,11 @@ describe('LevelGenerator_Matter', () => {
       matter: {
         add: {
           fromVertices: jest.fn().mockReturnValue({}),
-          gameObject: jest.fn().mockReturnValue({
-            body: {}
-          }),
+          gameObject: jest.fn().mockReturnValue({}),
         }
       },
       add: {
-        graphics: jest.fn().mockReturnValue({
-          fillStyle: jest.fn().mockReturnThis(),
-          fillPoints: jest.fn().mockReturnThis(),
+        polygon: jest.fn().mockReturnValue({
           destroy: jest.fn(),
         }),
         container: jest.fn().mockReturnValue({
