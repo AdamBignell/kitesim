@@ -14,6 +14,9 @@ describe('LevelGenerator_Matter', () => {
       matter: {
         add: {
           fromVertices: jest.fn().mockReturnValue({}),
+          gameObject: jest.fn().mockReturnValue({
+            body: {}
+          }),
         }
       },
       add: {
