@@ -351,7 +351,7 @@ export default class GameScene extends Phaser.Scene {
 
         if (!this.activeChunks.has(chunkKey)) {
           // This is a new chunk that needs to be generated
-          const newChunkPlatforms = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
+          const { platforms: newChunkPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
           this.activeChunks.set(chunkKey, newChunkPlatforms);
           this.physics.add.collider(this.player, newChunkPlatforms);
         } else {
