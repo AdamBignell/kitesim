@@ -17,7 +17,9 @@ export const Scene = jest.fn().mockImplementation(() => ({
                   refreshBody: jest.fn(),
                 }),
               }),
-              collider: jest.fn(),
+              collider: jest.fn().mockReturnValue({
+                destroy: jest.fn(),
+              }),
             },
             config: {
                 gravity: {
