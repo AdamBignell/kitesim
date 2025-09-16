@@ -26,6 +26,22 @@ describe('GameScene', () => {
     // Create a new instance of the scene before each test
     scene = new GameScene();
     scene.sys = new Phaser.Scene().sys;
+
+    // --- Start of new mock setup ---
+    // The scene now depends on this structure for initialization.
+    // We modify the mock created by __mocks__/phaser.js to include what we need.
+    scene.sys.game.config.physics = {
+      arcade: { gravity: { y: 1500 } },
+      matter: { gravity: { y: 1500 } },
+    };
+    scene.game = {
+      registry: {
+        get: jest.fn().mockReturnValue('arcade'), // Default to arcade for tests
+      },
+      config: scene.sys.game.config, // Link to the same config
+    };
+    // --- End of new mock setup ---
+
     scene.init = GameScene.prototype.init.bind(scene);
     scene.init({ levelGenerator });
     // Manually add the methods that are part of the scene's lifecycle
@@ -35,6 +51,13 @@ describe('GameScene', () => {
     scene.togglePlayerControl = GameScene.prototype.togglePlayerControl.bind(scene);
     scene.updateActiveChunks = GameScene.prototype.updateActiveChunks.bind(scene);
     scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
+    scene.createAnimations = GameScene.prototype.createAnimations.bind(scene);
+    scene.setupInput = GameScene.prototype.setupInput.bind(scene);
+    scene.createArcadeWorld = GameScene.prototype.createArcadeWorld.bind(scene);
+    scene.createMatterWorld = GameScene.prototype.createMatterWorld.bind(scene);
+    scene.updateArcadePlayer = GameScene.prototype.updateArcadePlayer.bind(scene);
+    scene.updateMatterPlayer = GameScene.prototype.updateMatterPlayer.bind(scene);
+    scene.updateAnimation = GameScene.prototype.updateAnimation.bind(scene);
 
     // Mock the necessary properties on the scene instance
     scene.physics = scene.sys.game.scene.scenes[0].physics;
