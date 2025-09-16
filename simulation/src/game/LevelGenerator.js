@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { createNoise2D } from 'simplex-noise';
 import Grid from './generation/Grid';
+import Tile, { TileType } from './generation/Tile';
 import * as Structures from './generation/structures';
 import { createFloor } from './generation/MegaStructure';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
@@ -19,7 +20,12 @@ export default class LevelGenerator {
   }
 
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
-    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
+    const chunkGrid = new Grid(chunkSize, chunkSize, null);
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
+      }
+    }
     const newPlatforms = this.scene.physics.add.staticGroup();
 
     // --- Spline and Noise-based Terrain Generation ---
@@ -43,7 +49,7 @@ export default class LevelGenerator {
 
       for (let y = terrainHeight; y < chunkSize; y++) {
         if (y >= 0 && y < chunkSize) {
-          chunkGrid.setTile(x, y, 1);
+          chunkGrid.setTile(x, y, new Tile(TileType.SOLID));
         }
       }
     }
@@ -55,16 +61,43 @@ export default class LevelGenerator {
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
         // Only try to carve caves below the surface
-        if (chunkGrid.getTile(x, y) === 1) {
+        const tile = chunkGrid.getTile(x, y);
+        if (tile && tile.type === TileType.SOLID) {
           const worldX = (chunkX * chunkSize) + x;
           const worldY = (chunkY * chunkSize) + y;
           const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
 
-          // We also check that we are not carving the top-most layer of the terrain
-          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1).type === TileType.EMPTY);
 
           if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile
+            chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
+          }
+        }
+      }
+    }
+
+    // --- Slope Generation ---
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 1; y < chunkSize; y++) { // Start from y=1 to avoid checking out of bounds
+        const currentTile = chunkGrid.getTile(x, y);
+        if (currentTile && currentTile.type === TileType.SOLID) {
+          const aboveTile = chunkGrid.getTile(x, y - 1);
+
+          if (aboveTile && aboveTile.type === TileType.EMPTY) {
+            // This is a surface tile. Let's check for slopes.
+            if (x > 0 && x < chunkSize - 1) {
+              const leftTile = chunkGrid.getTile(x - 1, y);
+              const rightTile = chunkGrid.getTile(x + 1, y);
+
+              const aboveLeftTile = chunkGrid.getTile(x - 1, y - 1);
+              const aboveRightTile = chunkGrid.getTile(x + 1, y - 1);
+
+              if (rightTile && rightTile.type === TileType.SOLID && aboveRightTile && aboveRightTile.type === TileType.EMPTY) {
+                currentTile.type = TileType.SLOPE_45_LEFT;
+              } else if (leftTile && leftTile.type === TileType.SOLID && aboveLeftTile && aboveLeftTile.type === TileType.EMPTY) {
+                currentTile.type = TileType.SLOPE_45_RIGHT;
+              }
+            }
           }
         }
       }
@@ -79,24 +112,63 @@ export default class LevelGenerator {
       const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
       const tileY = Math.round(worldCenterY + node.y);
 
-      // Clear space above the platform for headroom
       for (let y = tileY - 5; y < tileY; y++) {
         for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
           if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-            chunkGrid.setTile(x, y, 0);
+            chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
           }
         }
       }
 
-      // Place the platform itself, ensuring it's solid
       for (let x = tileX; x < tileX + platformWidth; x++) {
         if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
-          chunkGrid.setTile(x, tileY, 1);
+          chunkGrid.setTile(x, tileY, new Tile(TileType.SOLID));
         }
       }
     }
 
-    const meshes = GreedyMesher.mesh(chunkGrid);
+    const surfaceTiles = [];
+    const groundGrid = new Grid(chunkSize, chunkSize, 0);
+
+    for (let y = 0; y < chunkSize; y++) {
+      for (let x = 0; x < chunkSize; x++) {
+        const tile = chunkGrid.getTile(x, y);
+        if (tile && (tile.type === TileType.SLOPE_45_LEFT || tile.type === TileType.SLOPE_45_RIGHT)) {
+          surfaceTiles.push({ x, y, tile });
+        } else if (tile && tile.type === TileType.SOLID) {
+          const aboveTile = chunkGrid.getTile(x, y - 1);
+          if (aboveTile && aboveTile.type === TileType.EMPTY) {
+            surfaceTiles.push({ x, y, tile });
+          } else {
+            groundGrid.setTile(x, y, 1);
+          }
+        }
+      }
+    }
+
+    const slopeGroup = this.scene.add.group();
+    for (const surfaceTile of surfaceTiles) {
+      const tileWorldX = (chunkX * chunkSize) + surfaceTile.x;
+      const tileWorldY = (chunkY * chunkSize) + surfaceTile.y;
+      const platformX = tileWorldX * tileSize;
+      const platformY = tileWorldY * tileSize;
+      let texture = 'platform';
+      if (surfaceTile.tile.type === TileType.SLOPE_45_LEFT) {
+        texture = 'slope_45_left';
+      } else if (surfaceTile.tile.type === TileType.SLOPE_45_RIGHT) {
+        texture = 'slope_45_right';
+      }
+      const newPlatform = this.scene.add.sprite(platformX, platformY, texture);
+      newPlatform.setOrigin(0,0);
+      if (surfaceTile.tile.type === TileType.SOLID) {
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else {
+        slopeGroup.add(newPlatform);
+      }
+    }
+
+    const meshes = GreedyMesher.mesh(groundGrid);
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
@@ -108,13 +180,18 @@ export default class LevelGenerator {
       newPlatforms.add(newPlatform);
     }
 
-    return { platforms: newPlatforms, grid: chunkGrid };
+    return { platforms: newPlatforms, grid: chunkGrid, surfaceTiles };
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
     const chunkX = 0;
     const chunkY = 0;
-    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
+    const chunkGrid = new Grid(chunkSize, chunkSize, null);
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
+      }
+    }
     const newPlatforms = this.scene.physics.add.staticGroup();
 
     // --- Spline and Noise-based Terrain Generation for the initial chunk ---
@@ -135,7 +212,7 @@ export default class LevelGenerator {
 
       for (let y = terrainHeight; y < chunkSize; y++) {
         if (y >= 0 && y < chunkSize) {
-          chunkGrid.setTile(x, y, 1);
+          chunkGrid.setTile(x, y, new Tile(TileType.SOLID));
         }
       }
     }
@@ -146,13 +223,38 @@ export default class LevelGenerator {
 
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(x, y) === 1) {
+        const tile = chunkGrid.getTile(x, y);
+        if (tile && tile.type === TileType.SOLID) {
           const worldX = (chunkX * chunkSize) + x;
           const worldY = (chunkY * chunkSize) + y;
           const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
-          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1).type === TileType.EMPTY);
           if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0);
+            chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
+          }
+        }
+      }
+    }
+
+    // --- Slope Generation for Initial Chunk ---
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 1; y < chunkSize; y++) {
+        const currentTile = chunkGrid.getTile(x, y);
+        if (currentTile && currentTile.type === TileType.SOLID) {
+          const aboveTile = chunkGrid.getTile(x, y - 1);
+          if (aboveTile && aboveTile.type === TileType.EMPTY) {
+            if (x > 0 && x < chunkSize - 1) {
+              const leftTile = chunkGrid.getTile(x - 1, y);
+              const rightTile = chunkGrid.getTile(x + 1, y);
+              const aboveLeftTile = chunkGrid.getTile(x - 1, y - 1);
+              const aboveRightTile = chunkGrid.getTile(x + 1, y - 1);
+
+              if (rightTile && rightTile.type === TileType.SOLID && aboveRightTile && aboveRightTile.type === TileType.EMPTY) {
+                currentTile.type = TileType.SLOPE_45_LEFT;
+              } else if (leftTile && leftTile.type === TileType.SOLID && aboveLeftTile && aboveLeftTile.type === TileType.EMPTY) {
+                currentTile.type = TileType.SLOPE_45_RIGHT;
+              }
+            }
           }
         }
       }
@@ -168,13 +270,13 @@ export default class LevelGenerator {
       for (let y = tileY - 5; y < tileY; y++) {
         for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
           if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-            chunkGrid.setTile(x, y, 0);
+            chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
           }
         }
       }
       for (let x = tileX; x < tileX + platformWidth; x++) {
         if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
-          chunkGrid.setTile(x, tileY, 1);
+          chunkGrid.setTile(x, tileY, new Tile(TileType.SOLID));
         }
       }
     }
@@ -184,7 +286,7 @@ export default class LevelGenerator {
     for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
         for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
             if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
-                chunkGrid.setTile(x, y, 0); // Clear out any terrain in the safe zone
+                chunkGrid.setTile(x, y, new Tile(TileType.EMPTY));
             }
         }
     }
@@ -195,7 +297,7 @@ export default class LevelGenerator {
 
     // Scan downwards from the top of the chunk to find the first solid tile in our search column
     for (let y = 0; y < chunkSize; y++) {
-        if (chunkGrid.getTile(searchX, y) === 1) {
+        if (chunkGrid.getTile(searchX, y).type === TileType.SOLID) {
             groundY = y;
             break;
         }
@@ -217,7 +319,48 @@ export default class LevelGenerator {
     }
 
     // Finally, create the platform bodies from the modified chunkGrid
-    const meshes = GreedyMesher.mesh(chunkGrid);
+    const surfaceTiles = [];
+    const groundGrid = new Grid(chunkSize, chunkSize, 0);
+
+    for (let y = 0; y < chunkSize; y++) {
+      for (let x = 0; x < chunkSize; x++) {
+        const tile = chunkGrid.getTile(x, y);
+        if (tile && (tile.type === TileType.SLOPE_45_LEFT || tile.type === TileType.SLOPE_45_RIGHT)) {
+          surfaceTiles.push({ x, y, tile });
+        } else if (tile && tile.type === TileType.SOLID) {
+          const aboveTile = chunkGrid.getTile(x, y - 1);
+          if (aboveTile && aboveTile.type === TileType.EMPTY) {
+            surfaceTiles.push({ x, y, tile });
+          } else {
+            groundGrid.setTile(x, y, 1);
+          }
+        }
+      }
+    }
+
+    const slopeGroup = this.scene.add.group();
+    for (const surfaceTile of surfaceTiles) {
+      const tileWorldX = (chunkX * chunkSize) + surfaceTile.x;
+      const tileWorldY = (chunkY * chunkSize) + surfaceTile.y;
+      const platformX = tileWorldX * tileSize;
+      const platformY = tileWorldY * tileSize;
+      let texture = 'platform';
+      if (surfaceTile.tile.type === TileType.SLOPE_45_LEFT) {
+        texture = 'slope_45_left';
+      } else if (surfaceTile.tile.type === TileType.SLOPE_45_RIGHT) {
+        texture = 'slope_45_right';
+      }
+      const newPlatform = this.scene.add.sprite(platformX, platformY, texture);
+      newPlatform.setOrigin(0,0);
+      if (surfaceTile.tile.type === TileType.SOLID) {
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else {
+        slopeGroup.add(newPlatform);
+      }
+    }
+
+    const meshes = GreedyMesher.mesh(groundGrid);
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
@@ -229,6 +372,6 @@ export default class LevelGenerator {
       newPlatforms.add(newPlatform);
     }
 
-    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
+    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid, surfaceTiles };
   }
 }

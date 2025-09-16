@@ -48,6 +48,12 @@ describe('GameScene', () => {
         fillRect: jest.fn(),
         generateTexture: jest.fn(),
         destroy: jest.fn(),
+        beginPath: jest.fn(),
+        moveTo: jest.fn(),
+        lineTo: jest.fn(),
+        closePath: jest.fn(),
+        fillPath: jest.fn(),
+        clear: jest.fn(),
       }),
       tileSprite: jest.fn().mockReturnValue({
         setOrigin: jest.fn(),

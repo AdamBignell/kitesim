@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import LevelGenerator from './LevelGenerator';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
+import { TileType } from './generation/Tile';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -60,8 +61,32 @@ export default class GameScene extends Phaser.Scene {
     graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
     graphics.generateTexture('platform', this.TILE_SIZE, this.TILE_SIZE);
     graphics.destroy();
+
+    // Create textures for sloped tiles
+    const slopeGraphics = this.add.graphics();
+    slopeGraphics.fillStyle(0x000000, 1);
+
+    // Slope 45 left ( \ )
+    slopeGraphics.beginPath();
+    slopeGraphics.moveTo(0, 0);
+    slopeGraphics.lineTo(this.TILE_SIZE, 0);
+    slopeGraphics.lineTo(this.TILE_SIZE, this.TILE_SIZE);
+    slopeGraphics.closePath();
+    slopeGraphics.fillPath();
+    slopeGraphics.generateTexture('slope_45_left', this.TILE_SIZE, this.TILE_SIZE);
+    slopeGraphics.clear();
+
+    // Slope 45 right ( / )
+    slopeGraphics.beginPath();
+    slopeGraphics.moveTo(0, 0);
+    slopeGraphics.lineTo(this.TILE_SIZE, 0);
+    slopeGraphics.lineTo(0, this.TILE_SIZE);
+    slopeGraphics.closePath();
+    slopeGraphics.fillPath();
+    slopeGraphics.generateTexture('slope_45_right', this.TILE_SIZE, this.TILE_SIZE);
+    slopeGraphics.destroy();
     // Generate the initial chunk and get the spawn point
-    const { platforms: initialPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+    const { platforms: initialPlatforms, spawnPoint, surfaceTiles: initialSurfaceTiles } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
 
     // Create the player at the dynamic spawn point
     this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
@@ -70,7 +95,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Store the initial chunk in our active chunks map
     const initialCollider = this.physics.add.collider(this.player, initialPlatforms);
-    this.activeChunks.set('0,0', { platforms: initialPlatforms, collider: initialCollider });
+    this.activeChunks.set('0,0', { platforms: initialPlatforms, collider: initialCollider, surfaceTiles: initialSurfaceTiles });
 
     // --- Camera ---
     this.cameras.main.startFollow(this.player);
@@ -191,6 +216,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update() {
+    this.handleSlopePhysics();
     // --- Dynamic Chunk Loading/Unloading ---
     const playerWorldX = this.player.x;
     const playerWorldY = this.player.y;
@@ -335,6 +361,55 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  handleSlopePhysics() {
+    const player = this.player;
+    const playerBounds = player.getBounds();
+    const playerBottom = player.body.bottom;
+    const playerCenter = player.body.center.x;
+
+    let onSlope = false;
+
+    for (const chunk of this.activeChunks.values()) {
+      if (!chunk.surfaceTiles) continue;
+
+      for (const surfaceTile of chunk.surfaceTiles) {
+        const tileX = (this.playerChunkCoord.x * this.CHUNK_SIZE + surfaceTile.x) * this.TILE_SIZE;
+        const tileY = (this.playerChunkCoord.y * this.CHUNK_SIZE + surfaceTile.y) * this.TILE_SIZE;
+        const tileRect = new Phaser.Geom.Rectangle(tileX, tileY, this.TILE_SIZE, this.TILE_SIZE);
+
+        if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, tileRect)) {
+          const tile = surfaceTile.tile;
+          if (tile.type === TileType.SLOPE_45_LEFT) {
+            const slopeTop = tileY;
+            const slopeBottom = tileY + this.TILE_SIZE;
+            const relativeX = playerCenter - tileX;
+            const expectedY = slopeTop + relativeX;
+
+            if (playerBottom > expectedY) {
+              player.y = expectedY - player.height / 2;
+              onSlope = true;
+            }
+          } else if (tile.type === TileType.SLOPE_45_RIGHT) {
+            const slopeTop = tileY;
+            const slopeBottom = tileY + this.TILE_SIZE;
+            const relativeX = playerCenter - tileX;
+            const expectedY = slopeTop + (this.TILE_SIZE - relativeX);
+
+            if (playerBottom > expectedY) {
+              player.y = expectedY - player.height / 2;
+              onSlope = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (onSlope) {
+      this.jumps = 0;
+      player.body.touching.down = true;
+    }
+  }
+
   // --- New Chunk Management Method ---
   updateActiveChunks() {
     const { x: playerChunkX, y: playerChunkY } = this.playerChunkCoord;
@@ -352,9 +427,9 @@ export default class GameScene extends Phaser.Scene {
           newActiveChunks.set(chunkKey, chunkData);
         } else {
           // This is a new chunk that needs to be generated
-          const { platforms: newChunkPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
+          const { platforms: newChunkPlatforms, surfaceTiles: newSurfaceTiles } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
           const newCollider = this.physics.add.collider(this.player, newChunkPlatforms);
-          newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, collider: newCollider });
+          newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, collider: newCollider, surfaceTiles: newSurfaceTiles });
         }
       }
     }
