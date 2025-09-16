@@ -71,12 +71,23 @@ export const Input = {
 }
 
 export const Math = {
-    Vector2: jest.fn()
+    Vector2: jest.fn(),
+    Clamp: jest.fn((value, min, max) => global.Math.max(min, global.Math.min(max, value))),
+    Between: jest.fn((min, max) => min + global.Math.random() * (max - min)),
+}
+
+export const Curves = {
+    Spline: jest.fn().mockImplementation((points) => ({
+        points: points,
+        getPoint: jest.fn().mockReturnValue({ x: 0, y: 0 }),
+        getPoints: jest.fn().mockReturnValue([{ x: 0, y: 0 }]),
+    })),
 }
 
 // Add any other specific Phaser mocks your scene uses
 export default {
   Scene,
   Math,
-  Input
+  Input,
+  Curves
 };

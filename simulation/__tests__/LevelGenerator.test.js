@@ -27,6 +27,11 @@ describe('LevelGenerator', () => {
         add: {
           staticGroup: jest.fn().mockReturnValue({
             add: jest.fn(),
+            create: jest.fn().mockReturnValue({
+              setSize: jest.fn().mockReturnThis(),
+              setVisible: jest.fn().mockReturnThis(),
+              refreshBody: jest.fn().mockReturnThis(),
+            }),
           }),
           existing: jest.fn(),
           sprite: jest.fn().mockReturnValue({
@@ -44,6 +49,10 @@ describe('LevelGenerator', () => {
           setOrigin: jest.fn(),
         }),
       },
+      scale: {
+        height: 800, // Mock height for the game world
+      },
+      TILE_SIZE: 32,
     };
 
     // Mock PlayerCapabilitiesProfile
