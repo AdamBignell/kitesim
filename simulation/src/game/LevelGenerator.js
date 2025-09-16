@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import Grid from './generation/Grid';
 import * as Structures from './generation/structures';
 import { createFloor } from './generation/MegaStructure';
-import Physics from './generation/Physics';
 import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 import GreedyMesher from './generation/GreedyMesher';
 
@@ -11,7 +10,6 @@ export default class LevelGenerator {
     this.scene = scene;
     this.structures = Object.values(Structures);
     this.pcp = pcp;
-    this.physics = new Physics(pcp);
   }
 
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
