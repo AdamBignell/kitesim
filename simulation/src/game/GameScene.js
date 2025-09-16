@@ -69,10 +69,8 @@ export default class GameScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(false); // World bounds are managed by chunk loading
 
     // Store the initial chunk in our active chunks map
-    this.activeChunks.set('0,0', initialPlatforms);
-
-    // Set up collision between the player and the initial platforms
-    this.physics.add.collider(this.player, initialPlatforms);
+    const initialCollider = this.physics.add.collider(this.player, initialPlatforms);
+    this.activeChunks.set('0,0', { platforms: initialPlatforms, collider: initialCollider });
 
     // --- Camera ---
     this.cameras.main.startFollow(this.player);
@@ -340,36 +338,40 @@ export default class GameScene extends Phaser.Scene {
   // --- New Chunk Management Method ---
   updateActiveChunks() {
     const { x: playerChunkX, y: playerChunkY } = this.playerChunkCoord;
-    const loadRadius = 3; // Load a 7x7 grid of chunks (3 chunks in each direction)
+    const loadRadius = 1; // Load a 3x3 grid of chunks (1 chunk in each direction)
     const newActiveChunks = new Map();
 
-    // Load new chunks
+    // Identify and load chunks in the new radius
     for (let y = playerChunkY - loadRadius; y <= playerChunkY + loadRadius; y++) {
       for (let x = playerChunkX - loadRadius; x <= playerChunkX + loadRadius; x++) {
         const chunkKey = `${x},${y}`;
-        newActiveChunks.set(chunkKey, null); // Mark as a desired chunk
+        let chunkData = this.activeChunks.get(chunkKey);
 
-        if (!this.activeChunks.has(chunkKey)) {
+        if (chunkData) {
+          // The chunk is already active, so just carry it over
+          newActiveChunks.set(chunkKey, chunkData);
+        } else {
           // This is a new chunk that needs to be generated
           const { platforms: newChunkPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
-          this.activeChunks.set(chunkKey, newChunkPlatforms);
-          this.physics.add.collider(this.player, newChunkPlatforms);
-        } else {
-          // It's an old chunk, just carry it over
-          newActiveChunks.set(chunkKey, this.activeChunks.get(chunkKey));
+          const newCollider = this.physics.add.collider(this.player, newChunkPlatforms);
+          newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, collider: newCollider });
         }
       }
     }
 
-    // Unload old chunks
-    for (const [key, chunkGroup] of this.activeChunks.entries()) {
+    // Unload old chunks that are no longer in the active radius
+    for (const [key, chunkData] of this.activeChunks.entries()) {
       if (!newActiveChunks.has(key)) {
-        if (chunkGroup) {
-          chunkGroup.destroy(true, true); // Destroy the platforms in the group
+        if (chunkData) {
+          // Destroy the platforms and their physics bodies
+          chunkData.platforms.destroy(true, true);
+          // Destroy the collider object
+          chunkData.collider.destroy();
         }
       }
     }
 
+    // Replace the old map with the new one
     this.activeChunks = newActiveChunks;
   }
 }

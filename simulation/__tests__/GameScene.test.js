@@ -7,7 +7,7 @@ jest.mock('../src/game/LevelGenerator', () => {
     return jest.fn().mockImplementation(() => {
         return {
             generateChunk: jest.fn().mockReturnValue({
-                destroy: jest.fn()
+                platforms: { destroy: jest.fn() }
             }),
             generateInitialChunkAndSpawnPoint: jest.fn().mockReturnValue({
                 platforms: { destroy: jest.fn() },

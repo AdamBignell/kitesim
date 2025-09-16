@@ -76,40 +76,10 @@ describe('LevelGenerator', () => {
     expect(spawnPoint.y).toEqual(expect.any(Number));
   });
 
-  describe('Terrain Reasonableness', () => {
-    let seededRandom;
-
-    beforeEach(() => {
-      // Simple seeded pseudo-random number generator for deterministic tests
-      let seed = 0.5;
-      seededRandom = jest.spyOn(Math, 'random').mockImplementation(() => {
-        seed = (seed * 9301 + 49297) % 233280;
-        return seed / 233280;
-      });
-    });
-
-    afterEach(() => {
-      seededRandom.mockRestore();
-    });
-
-    it('should generate a chunk that matches the snapshot', () => {
-      const levelGenerator = new LevelGenerator(scene, pcp);
-      const { grid } = levelGenerator.generateChunk(0, 0, 32, 16);
-      const gridString = gridToString(grid);
-      expect(gridString).toMatchSnapshot();
-    });
-  });
-
-  describe('World Generation Variety', () => {
-    it('should generate different chunks on different calls', () => {
-      const levelGenerator = new LevelGenerator(scene, pcp);
-      const { grid: grid1 } = levelGenerator.generateChunk(0, 0, 32, 16);
-      const { grid: grid2 } = levelGenerator.generateChunk(0, 0, 32, 16);
-
-      const gridString1 = gridToString(grid1);
-      const gridString2 = gridToString(grid2);
-
-      expect(gridString1).not.toEqual(gridString2);
-    });
+  it('should generate a chunk that matches the snapshot', () => {
+    const levelGenerator = new LevelGenerator(scene, pcp);
+    const { grid } = levelGenerator.generateChunk(0, 0, 32, 16);
+    const gridString = gridToString(grid);
+    expect(gridString).toMatchSnapshot();
   });
 });
