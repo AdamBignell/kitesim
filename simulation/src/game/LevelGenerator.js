@@ -231,4 +231,255 @@ export default class LevelGenerator {
 
     return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
   }
+
+  generateChunkMatter(chunkX, chunkY, chunkSize, tileSize) {
+    // --- 1. & 2. & 3. & 4. : Generate grid data (same as original) ---
+    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
+    const terrainNoiseScale = 50;
+    const terrainAmplitude = 15;
+    const worldCenterY = chunkSize / 2;
+
+    for (let x = 0; x < chunkSize; x++) {
+      const worldX = (chunkX * chunkSize) + x;
+      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
+      const splineHeight = splinePoint.y;
+      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseOffset = noiseValue * terrainAmplitude;
+      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
+      for (let y = terrainHeight; y < chunkSize; y++) {
+        if (y >= 0 && y < chunkSize) {
+          chunkGrid.setTile(x, y, 1);
+        }
+      }
+    }
+
+    const caveNoiseScale = 25;
+    const caveThreshold = 0.6;
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          const worldX = (chunkX * chunkSize) + x;
+          const worldY = (chunkY * chunkSize) + y;
+          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+          if (caveNoiseValue > caveThreshold && !isSurface) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+    }
+
+    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
+    const platformWidth = 3;
+    for (const node of nodes) {
+      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
+      const tileY = Math.round(worldCenterY + node.y);
+      for (let y = tileY - 5; y < tileY; y++) {
+        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
+          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+      for (let x = tileX; x < tileX + platformWidth; x++) {
+        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
+          chunkGrid.setTile(x, tileY, 1);
+        }
+      }
+    }
+
+    // --- NEW PART: Generate Vertices and Graphics ---
+    const surfaceVertices = [];
+    const step = 2;
+    for (let x = 0; x < chunkSize; x += step) {
+      let surfaceY = -1;
+      for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          surfaceY = y;
+          break;
+        }
+      }
+
+      if (surfaceY !== -1) {
+        const worldX = (chunkX * chunkSize + x) * tileSize;
+        const worldY = (chunkY * chunkSize + surfaceY) * tileSize;
+        surfaceVertices.push({ x: worldX, y: worldY });
+      }
+    }
+
+    if (surfaceVertices.length < 2) {
+      return { vertices: null, graphics: null, grid: chunkGrid };
+    }
+
+    const firstVert = surfaceVertices[0];
+    const lastVert = surfaceVertices[surfaceVertices.length - 1];
+    const chunkWorldX = chunkX * chunkSize * tileSize;
+    const chunkWorldY = chunkY * chunkSize * tileSize;
+    const chunkPixelHeight = chunkSize * tileSize;
+
+    // Add the bottom-right and bottom-left corners relative to the chunk's world position
+    const bodyVertices = [
+      ...surfaceVertices,
+      { x: lastVert.x, y: chunkWorldY + chunkPixelHeight },
+      { x: firstVert.x, y: chunkWorldY + chunkPixelHeight }
+    ];
+
+    const graphics = this.scene.add.graphics();
+    graphics.setDepth(-1); // Render behind sprites
+    graphics.fillStyle(0x1a1a1a);
+    graphics.beginPath();
+    // Graphics path needs to be relative to the graphics object's position, but we can use world coords if we don't move the graphics object
+    graphics.moveTo(firstVert.x, firstVert.y);
+    for (let i = 1; i < surfaceVertices.length; i++) {
+      graphics.lineTo(surfaceVertices[i].x, surfaceVertices[i].y);
+    }
+    graphics.lineTo(lastVert.x, chunkWorldY + chunkPixelHeight);
+    graphics.lineTo(firstVert.x, chunkWorldY + chunkPixelHeight);
+    graphics.closePath();
+    graphics.fillPath();
+
+    return { vertices: bodyVertices, graphics: graphics, grid: chunkGrid };
+  }
+
+  generateInitialChunkAndSpawnPointMatter(chunkSize, tileSize) {
+    const chunkX = 0;
+    const chunkY = 0;
+    const chunkGrid = new Grid(chunkSize, chunkSize, 0);
+
+    // --- Spline and Noise-based Terrain Generation for the initial chunk ---
+    const terrainNoiseScale = 50;
+    const terrainAmplitude = 15;
+    const worldCenterY = chunkSize / 2;
+
+    for (let x = 0; x < chunkSize; x++) {
+      const worldX = (chunkX * chunkSize) + x;
+      const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
+      const splineHeight = splinePoint.y;
+      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseOffset = noiseValue * terrainAmplitude;
+      const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
+      for (let y = terrainHeight; y < chunkSize; y++) {
+        if (y >= 0 && y < chunkSize) {
+          chunkGrid.setTile(x, y, 1);
+        }
+      }
+    }
+
+    // --- 2D Noise for Cave Generation ---
+    const caveNoiseScale = 25;
+    const caveThreshold = 0.6;
+    for (let x = 0; x < chunkSize; x++) {
+      for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          const worldX = (chunkX * chunkSize) + x;
+          const worldY = (chunkY * chunkSize) + y;
+          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+          const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
+          if (caveNoiseValue > caveThreshold && !isSurface) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+    }
+
+    // --- Place Rhythm-Based Platforms (after cave carving) ---
+    const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
+    const platformWidth = 3;
+    for (const node of nodes) {
+      const tileX = Math.round(node.x * 20) - (chunkX * chunkSize);
+      const tileY = Math.round(worldCenterY + node.y);
+      for (let y = tileY - 5; y < tileY; y++) {
+        for (let x = tileX - 1; x < tileX + platformWidth + 1; x++) {
+          if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+            chunkGrid.setTile(x, y, 0);
+          }
+        }
+      }
+      for (let x = tileX; x < tileX + platformWidth; x++) {
+        if (x >= 0 && x < chunkSize && tileY >= 0 && tileY < chunkSize) {
+          chunkGrid.setTile(x, tileY, 1);
+        }
+      }
+    }
+
+    // Now, create a safe zone for the player to spawn in
+    const safeZone = { x: 1, y: 12, width: 5, height: 5 };
+    for (let y = safeZone.y; y < safeZone.y + safeZone.height; y++) {
+        for (let x = safeZone.x; x < safeZone.x + safeZone.width; x++) {
+            if (x >= 0 && x < chunkSize && y >= 0 && y < chunkSize) {
+                chunkGrid.setTile(x, y, 0); // Clear out any terrain in the safe zone
+            }
+        }
+    }
+
+    // Find a safe spawn point within the cleared safe zone
+    const searchX = safeZone.x + Math.floor(safeZone.width / 2);
+    let groundY = -1;
+    for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(searchX, y) === 1) {
+            groundY = y;
+            break;
+        }
+    }
+    let spawnPoint;
+    if (groundY !== -1) {
+        const spawnX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+        const spawnY = (chunkY * chunkSize + groundY) * tileSize - (tileSize * 2);
+        spawnPoint = { x: spawnX, y: spawnY };
+    } else {
+        const fallbackX = (chunkX * chunkSize + searchX) * tileSize + tileSize / 2;
+        const fallbackY = (chunkY * chunkSize + safeZone.y + Math.floor(safeZone.height / 2)) * tileSize + tileSize / 2;
+        spawnPoint = { x: fallbackX, y: fallbackY };
+    }
+
+    // --- Generate Vertices and Graphics from the MODIFIED grid ---
+    const surfaceVertices = [];
+    const step = 2;
+    for (let x = 0; x < chunkSize; x += step) {
+      let surfaceY = -1;
+      for (let y = 0; y < chunkSize; y++) {
+        if (chunkGrid.getTile(x, y) === 1) {
+          surfaceY = y;
+          break;
+        }
+      }
+      if (surfaceY !== -1) {
+        const worldX = (chunkX * chunkSize + x) * tileSize;
+        const worldY = (chunkY * chunkSize + surfaceY) * tileSize;
+        surfaceVertices.push({ x: worldX, y: worldY });
+      }
+    }
+
+    if (surfaceVertices.length < 2) {
+      // Don't create a body, but still return spawn point
+      return { vertices: null, graphics: null, spawnPoint, grid: chunkGrid };
+    }
+
+    const firstVert = surfaceVertices[0];
+    const lastVert = surfaceVertices[surfaceVertices.length - 1];
+    const chunkWorldX = chunkX * chunkSize * tileSize;
+    const chunkWorldY = chunkY * chunkSize * tileSize;
+    const chunkPixelHeight = chunkSize * tileSize;
+
+    const bodyVertices = [
+      ...surfaceVertices,
+      { x: lastVert.x, y: chunkWorldY + chunkPixelHeight },
+      { x: firstVert.x, y: chunkWorldY + chunkPixelHeight }
+    ];
+
+    const graphics = this.scene.add.graphics();
+    graphics.setDepth(-1);
+    graphics.fillStyle(0x1a1a1a);
+    graphics.beginPath();
+    graphics.moveTo(firstVert.x, firstVert.y);
+    for (let i = 1; i < surfaceVertices.length; i++) {
+      graphics.lineTo(surfaceVertices[i].x, surfaceVertices[i].y);
+    }
+    graphics.lineTo(lastVert.x, chunkWorldY + chunkPixelHeight);
+    graphics.lineTo(firstVert.x, chunkWorldY + chunkPixelHeight);
+    graphics.closePath();
+    graphics.fillPath();
+
+    return { vertices: bodyVertices, graphics, spawnPoint, grid: chunkGrid };
+  }
 }
