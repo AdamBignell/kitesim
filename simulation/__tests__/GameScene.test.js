@@ -1,7 +1,9 @@
 import GameScene from '../src/game/GameScene';
 import * as Phaser from 'phaser';
 import LevelGenerator from '../src/game/LevelGenerator';
+import { TileType } from '../src/game/generation/Tile';
 
+jest.mock('phaser');
 // The phaser module is mocked in jest.config.js
 jest.mock('../src/game/LevelGenerator', () => {
     return jest.fn().mockImplementation(() => {
@@ -11,7 +13,8 @@ jest.mock('../src/game/LevelGenerator', () => {
             }),
             generateInitialChunkAndSpawnPoint: jest.fn().mockReturnValue({
                 platforms: { destroy: jest.fn() },
-                spawnPoint: { x: 150, y: 250 }
+                spawnPoint: { x: 150, y: 250 },
+                surfaceTiles: [],
             })
         };
     });
@@ -35,6 +38,7 @@ describe('GameScene', () => {
     scene.togglePlayerControl = GameScene.prototype.togglePlayerControl.bind(scene);
     scene.updateActiveChunks = GameScene.prototype.updateActiveChunks.bind(scene);
     scene.createPlayerCapabilitiesProfile = GameScene.prototype.createPlayerCapabilitiesProfile.bind(scene);
+    scene.handleSlopePhysics = GameScene.prototype.handleSlopePhysics.bind(scene);
 
     // Mock the necessary properties on the scene instance
     scene.physics = scene.sys.game.scene.scenes[0].physics;
@@ -59,6 +63,22 @@ describe('GameScene', () => {
         setOrigin: jest.fn(),
       }),
     };
+
+    // Mock player
+    scene.player = {
+      getBounds: jest.fn(),
+      body: {
+        bottom: 32,
+        center: { x: 16 },
+        velocity: { x: 100, y: 0 },
+        setAllowGravity: jest.fn(),
+      },
+      setVelocityY: jest.fn(),
+    };
+
+    // Mock active chunks
+    scene.activeChunks = new Map();
+    scene.playerChunkCoord = { x: 0, y: 0 };
 
 
     LevelGenerator.mockClear();
@@ -90,5 +110,45 @@ describe('GameScene', () => {
     scene.create(); // The create method calls generateInitialChunkAndSpawnPoint
 
     expect(levelGenerator.generateInitialChunkAndSpawnPoint).toHaveBeenCalled();
+  });
+
+  describe('handleSlopePhysics', () => {
+    it('should disable gravity and set velocity when on a left slope', () => {
+      const surfaceTiles = [{ x: 0, y: 0, tile: { type: TileType.SLOPE_45_LEFT } }];
+      scene.activeChunks.set('0,0', { surfaceTiles });
+      scene.player.getBounds.mockReturnValue({ x: 0, y: 0, width: 32, height: 32 });
+      scene.player.body.center.x = 16;
+      scene.player.body.bottom = 32;
+      Phaser.Geom.Intersects.RectangleToRectangle.mockReturnValue(true);
+
+      scene.handleSlopePhysics();
+
+      expect(scene.player.body.setAllowGravity).toHaveBeenCalledWith(false);
+      expect(scene.player.setVelocityY).toHaveBeenCalledWith(100);
+    });
+
+    it('should disable gravity and set velocity when on a right slope', () => {
+      const surfaceTiles = [{ x: 0, y: 0, tile: { type: TileType.SLOPE_45_RIGHT } }];
+      scene.activeChunks.set('0,0', { surfaceTiles });
+      scene.player.getBounds.mockReturnValue({ x: 0, y: 0, width: 32, height: 32 });
+      scene.player.body.center.x = 16;
+      scene.player.body.bottom = 32;
+      Phaser.Geom.Intersects.RectangleToRectangle.mockReturnValue(true);
+
+      scene.handleSlopePhysics();
+
+      expect(scene.player.body.setAllowGravity).toHaveBeenCalledWith(false);
+      expect(scene.player.setVelocityY).toHaveBeenCalledWith(-100);
+    });
+
+    it('should enable gravity when not on a slope', () => {
+      scene.activeChunks.set('0,0', { surfaceTiles: [] });
+      scene.player.getBounds.mockReturnValue({ x: 100, y: 100, width: 32, height: 32 });
+      Phaser.Geom.Intersects.RectangleToRectangle.mockReturnValue(false);
+
+      scene.handleSlopePhysics();
+
+      expect(scene.player.body.setAllowGravity).toHaveBeenCalledWith(true);
+    });
   });
 });

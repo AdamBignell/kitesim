@@ -9,10 +9,10 @@
  Detected additional lockfiles:
    * /app/simulation/package-lock.json
 
- ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+ ⚠ Port 3000 is in use by an unknown process, using available port 3003 instead.
    ▲ Next.js 15.5.3 (Turbopack)
-   - Local:        http://localhost:3001
-   - Network:      http://192.168.0.2:3001
+   - Local:        http://localhost:3003
+   - Network:      http://192.168.0.2:3003
 
  ✓ Starting...
- ✓ Ready in 1478ms
+ ✓ Ready in 2.4s

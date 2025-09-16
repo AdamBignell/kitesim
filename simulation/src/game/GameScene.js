@@ -368,6 +368,7 @@ export default class GameScene extends Phaser.Scene {
     const playerCenter = player.body.center.x;
 
     let onSlope = false;
+    let slopeType = null;
 
     for (const chunk of this.activeChunks.values()) {
       if (!chunk.surfaceTiles) continue;
@@ -379,34 +380,39 @@ export default class GameScene extends Phaser.Scene {
 
         if (Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, tileRect)) {
           const tile = surfaceTile.tile;
-          if (tile.type === TileType.SLOPE_45_LEFT) {
+          if (tile.type === TileType.SLOPE_45_LEFT || tile.type === TileType.SLOPE_45_RIGHT) {
             const slopeTop = tileY;
-            const slopeBottom = tileY + this.TILE_SIZE;
             const relativeX = playerCenter - tileX;
-            const expectedY = slopeTop + relativeX;
+            const expectedY = (tile.type === TileType.SLOPE_45_LEFT)
+              ? slopeTop + relativeX
+              : slopeTop + (this.TILE_SIZE - relativeX);
 
-            if (playerBottom > expectedY) {
-              player.y = expectedY - player.height / 2;
+            if (playerBottom > expectedY - 2) { // Small tolerance
               onSlope = true;
-            }
-          } else if (tile.type === TileType.SLOPE_45_RIGHT) {
-            const slopeTop = tileY;
-            const slopeBottom = tileY + this.TILE_SIZE;
-            const relativeX = playerCenter - tileX;
-            const expectedY = slopeTop + (this.TILE_SIZE - relativeX);
-
-            if (playerBottom > expectedY) {
-              player.y = expectedY - player.height / 2;
-              onSlope = true;
+              slopeType = tile.type;
+              break;
             }
           }
         }
       }
+      if (onSlope) break;
     }
 
     if (onSlope) {
+      player.body.setAllowGravity(false);
+      const velocityX = player.body.velocity.x;
+      let velocityY = 0;
+
+      if (slopeType === TileType.SLOPE_45_LEFT) {
+        velocityY = velocityX;
+      } else if (slopeType === TileType.SLOPE_45_RIGHT) {
+        velocityY = -velocityX;
+      }
+      player.setVelocityY(velocityY);
+
       this.jumps = 0;
-      player.body.touching.down = true;
+    } else {
+      player.body.setAllowGravity(true);
     }
   }
 

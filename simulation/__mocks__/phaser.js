@@ -74,9 +74,17 @@ export const Math = {
     Vector2: jest.fn()
 }
 
+export const Geom = {
+    Rectangle: jest.fn(),
+    Intersects: {
+        RectangleToRectangle: jest.fn().mockReturnValue(true)
+    }
+}
+
 // Add any other specific Phaser mocks your scene uses
 export default {
   Scene,
   Math,
-  Input
+  Input,
+  Geom,
 };
