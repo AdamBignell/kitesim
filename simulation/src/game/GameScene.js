@@ -241,7 +241,7 @@ export default class GameScene extends Phaser.Scene {
         isWallSliding = true;
       }
 
-      if (isWallSliding) {
+      if (isWallSliding && this.player.body.velocity.y >= 0) {
         this.player.setVelocityY(this.WALL_SLIDE_SPEED);
       }
 
