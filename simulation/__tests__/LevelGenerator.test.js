@@ -4,12 +4,32 @@ import Grid from '../src/game/generation/Grid';
 
 jest.mock('../src/game/generation/PlayerCapabilitiesProfile');
 
+import { TileType } from '../src/game/generation/Tile';
+
 const gridToString = (grid) => {
   let gridString = '';
   for (let y = 0; y < grid.height; y++) {
     let row = '';
     for (let x = 0; x < grid.width; x++) {
-      row += grid.getTile(x, y) === 1 ? '#' : '.';
+      const tile = grid.getTile(x, y);
+      if (!tile) {
+        row += '.';
+        continue;
+      }
+      switch (tile.type) {
+        case TileType.SOLID:
+          row += '#';
+          break;
+        case TileType.SLOPE_45_LEFT:
+          row += '\\';
+          break;
+        case TileType.SLOPE_45_RIGHT:
+          row += '/';
+          break;
+        default:
+          row += '.';
+          break;
+      }
     }
     gridString += row + '\n';
   }
@@ -40,7 +60,13 @@ describe('LevelGenerator', () => {
         },
       },
       add: {
+        group: jest.fn().mockReturnValue({
+          add: jest.fn(),
+        }),
         tileSprite: jest.fn().mockReturnValue({
+          setOrigin: jest.fn(),
+        }),
+        sprite: jest.fn().mockReturnValue({
           setOrigin: jest.fn(),
         }),
       },
@@ -80,7 +106,6 @@ describe('LevelGenerator', () => {
     const levelGenerator = new LevelGenerator(scene, pcp);
     const { grid } = levelGenerator.generateChunk(0, 0, 32, 16);
     const gridString = gridToString(grid);
-    console.log(gridString);
-    // expect(gridString).toMatchSnapshot();
+    expect(gridString).toMatchSnapshot();
   });
 });
