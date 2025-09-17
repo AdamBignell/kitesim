@@ -5,9 +5,6 @@ import PlayerCapabilitiesProfile from './generation/PlayerCapabilitiesProfile';
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('default');
-    this.onGround = false;
-    this.onWallLeft = false;
-    this.onWallRight = false;
   }
 
   init(data) {
@@ -69,26 +66,6 @@ export default class GameScene extends Phaser.Scene {
     };
     this.updateActiveChunks();
 
-    this.matter.world.on('collisionactive', (event) => {
-      for (let i = 0; i < event.pairs.length; i++) {
-        const pair = event.pairs[i];
-        let otherBody;
-        if (pair.bodyA.label === 'player') {
-          otherBody = pair.bodyB;
-        } else if (pair.bodyB.label === 'player') {
-          otherBody = pair.bodyA;
-        } else {
-          continue;
-        }
-
-        if (otherBody.isStatic) {
-          const collisionNormal = pair.collision.normal;
-          if (collisionNormal.y < -0.5) { this.onGround = true; }
-          if (collisionNormal.x > 0.5) { this.onWallLeft = true; }
-          if (collisionNormal.x < -0.5) { this.onWallRight = true; }
-        }
-      }
-    });
 
     this.anims.create({ key: 'idle', frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 3 }), frameRate: 5, repeat: -1 });
     this.anims.create({ key: 'walk', frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 7 }), frameRate: 12, repeat: -1 });
@@ -118,17 +95,21 @@ export default class GameScene extends Phaser.Scene {
   }
 
   togglePlayerControl(isUICall = false) {
-    if (!isUICall && this.isAIControlled) return !this.isAIControlled;
+    if (!isUICall) {
+      if (this.isAIControlled) {
+        return !this.isAIControlled;
+      }
+    }
+
     this.isAIControlled = !this.isAIControlled;
-    if (!this.isAIControlled) this.player.setVelocityX(0);
+
+    if (!this.isAIControlled) {
+      this.player.setVelocityX(0);
+    }
     return !this.isAIControlled;
   }
 
   update() {
-    this.onGround = false;
-    this.onWallLeft = false;
-    this.onWallRight = false;
-
     const playerWorldX = this.player.x;
     const playerWorldY = this.player.y;
     const chunkX = Math.floor(playerWorldX / (this.CHUNK_SIZE * this.TILE_SIZE));
@@ -139,41 +120,91 @@ export default class GameScene extends Phaser.Scene {
       this.updateActiveChunks();
     }
 
-    if (this.onGround) {
+    // Reset jumps if touching the ground or the world bounds
+    if (this.player.body.touching.down || this.player.body.blocked.down) {
       this.jumps = 0;
     }
 
-    const isJumpKeyDown = Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.space);
+    // Check for jump input
+    const isJumpKeyDown = Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.space);
 
+    // 2. Check which control mode is active
     if (this.isAIControlled) {
+      // --- AI Control Logic ---
       const targetSpeed = this.isAISprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
-      if (this.aiAction === 'left') this.player.setVelocityX(-targetSpeed);
-      else if (this.aiAction === 'right') this.player.setVelocityX(targetSpeed);
-      else this.player.setVelocityX(0);
+
+      if (this.aiAction === 'left') {
+        this.player.setVelocityX(-targetSpeed);
+      } else if (this.aiAction === 'right') {
+        this.player.setVelocityX(targetSpeed);
+      } else { // 'idle'
+        this.player.setVelocityX(0);
+      }
     } else {
+      // --- Player Control Logic ---
       const isSprinting = this.keyShift.isDown;
       const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
-      const isPressingLeft = this.cursors.left.isDown || this.keys.left.isDown;
-      const isPressingRight = this.cursors.right.isDown || this.keys.right.isDown;
 
-      const isWallSliding = ((this.onWallLeft && isPressingLeft) || (this.onWallRight && isPressingRight)) && !this.onGround;
-      if (isWallSliding) {
+      // Wall slide and jump logic
+      const onWallLeft = this.player.body.touching.left && !(this.player.body.touching.down || this.player.body.blocked.down);
+      const onWallRight = this.player.body.touching.right && !(this.player.body.touching.down || this.player.body.blocked.down);
+      let isWallSliding = false;
+
+      if ((onWallLeft && (this.cursors.left.isDown || this.keys.left.isDown)) ||
+          (onWallRight && (this.cursors.right.isDown || this.keys.right.isDown))) {
+        isWallSliding = true;
+      }
+
+      if (isWallSliding && this.player.body.velocity.y >= 0) {
         this.player.setVelocityY(this.WALL_SLIDE_SPEED);
       }
 
+      // Horizontal Movement
       if (!this.isWallJumping) {
-        if (isPressingLeft) { this.player.setVelocityX(-targetSpeed); }
-        else if (isPressingRight) { this.player.setVelocityX(targetSpeed); }
-        else { this.player.setVelocityX(0); }
+        const isPressingLeft = this.cursors.left.isDown || this.keys.left.isDown;
+        const isPressingRight = this.cursors.right.isDown || this.keys.right.isDown;
+
+        if (isPressingLeft) {
+          // Prevents sticking to walls when on the ground
+          if (this.player.body.blocked.left && !isWallSliding) {
+            this.player.setVelocityX(0);
+          } else {
+            this.player.setVelocityX(-targetSpeed);
+          }
+          this.lastDirection = 'left';
+        } else if (isPressingRight) {
+          // Prevents sticking to walls when on the ground
+          if (this.player.body.blocked.right && !isWallSliding) {
+            this.player.setVelocityX(0);
+          } else {
+            this.player.setVelocityX(targetSpeed);
+          }
+          this.lastDirection = 'right';
+        } else if (this.player.body.touching.down || this.player.body.blocked.down) {
+          // Only stop horizontal movement if on the ground
+          this.player.setVelocityX(0);
+        }
       }
 
+      // Jumping
       if (isJumpKeyDown) {
         if (isWallSliding) {
+          // Wall jump
           this.isWallJumping = true;
-          const wallJumpX = this.onWallLeft ? this.WALL_JUMP_FORCE_X : -this.WALL_JUMP_FORCE_X;
+          const wallJumpX = onWallLeft ? this.WALL_JUMP_FORCE_X : -this.WALL_JUMP_FORCE_X;
           this.player.setVelocity(wallJumpX, this.WALL_JUMP_FORCE_Y);
-          this.time.addEvent({ delay: this.WALL_JUMP_LOCKOUT, callback: () => { this.isWallJumping = false; }, callbackScope: this });
+
+          this.time.addEvent({
+            delay: this.WALL_JUMP_LOCKOUT,
+            callback: () => {
+              this.isWallJumping = false;
+            },
+            callbackScope: this
+          });
         } else if (this.jumps < this.maxJumps) {
+          // Regular jump
           this.jumps++;
           const jumpForce = isSprinting ? this.SPRINT_JUMP_FORCE : this.BASE_JUMP_FORCE;
           this.player.setVelocityY(jumpForce);
@@ -181,17 +212,21 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    const velocity = this.player.body.velocity;
-    if (!this.onGround) {
+    // Animation logic
+    if (!this.player.body.touching.down) {
       this.player.anims.play('jump', true);
-    } else if (Math.abs(velocity.x) > 0.1) {
-      this.player.anims.play(this.isAIControlled ? this.isAISprinting ? 'sprint' : 'walk' : this.keyShift.isDown ? 'sprint' : 'walk', true);
+    } else if (this.player.body.velocity.x !== 0) {
+      const isSprinting = this.isAIControlled ? this.isAISprinting : this.keyShift.isDown;
+      this.player.anims.play(isSprinting ? 'sprint' : 'walk', true);
     } else {
       this.player.anims.play('idle', true);
     }
 
-    if (velocity.x < -0.1) { this.player.setFlipX(true); }
-    else if (velocity.x > 0.1) { this.player.setFlipX(false); }
+    if (this.player.body.velocity.x < 0) {
+        this.player.setFlipX(true);
+    } else if (this.player.body.velocity.x > 0) {
+        this.player.setFlipX(false);
+    }
   }
 
   updateAIAction() {
