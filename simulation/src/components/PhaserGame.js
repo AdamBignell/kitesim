@@ -93,7 +93,8 @@ const PhaserGame = () => {
   return (
     <div key={gameKey} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div id="phaser-container" style={{ width: '100%', height: '100%' }} />
-      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <h2 style={{ color: 'white', fontFamily: 'Helvetica, Arial, sans-serif', margin: '0 0 10px 0' }}>Disaster Sword</h2>
         <button onClick={handleToggleControl} style={buttonStyle}>
           <span role="img" aria-label="spiral">🌀</span> {isPlayerControlled ? 'Release' : 'Possess'}
         </button>
