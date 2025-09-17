@@ -11,6 +11,7 @@ export default class LevelGenerator {
     this.structures = Object.values(Structures);
     this.pcp = pcp;
     this.noise = createNoise2D();
+    this.caveNoise = createNoise2D(); // Separate noise instance for caves
     const rhythmCalculator = new RhythmNodeCalculator(pcp);
     this.pathGenerator = new SplinePathGenerator(rhythmCalculator);
   }
@@ -46,22 +47,25 @@ export default class LevelGenerator {
     }
 
     // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25; // How "zoomed-in" the cave noise is
-    const caveThreshold = 0.6; // Value above which a tile becomes empty space
+    const frequency = 0.05; // Controls the scale of the caves.
+    const cave_threshold = 0.5; // Determines the density of caves.
 
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
         // Only try to carve caves below the surface
         if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+          const global_x = (chunkX * chunkSize) + x;
+          const global_y = (chunkY * chunkSize) + y;
+
+          // Sample noise and normalize to [0, 1]
+          let noise_value = this.caveNoise(global_x * frequency, global_y * frequency);
+          noise_value = (noise_value + 1) / 2;
 
           // We also check that we are not carving the top-most layer of the terrain
           const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
 
-          if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile
+          if (noise_value < cave_threshold && !isSurface) {
+            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile (air)
           }
         }
       }
@@ -138,17 +142,21 @@ export default class LevelGenerator {
     }
 
     // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25;
-    const caveThreshold = 0.6;
+    const frequency = 0.05; // Controls the scale of the caves.
+    const cave_threshold = 0.5; // Determines the density of caves.
 
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
         if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
+          const global_x = (chunkX * chunkSize) + x;
+          const global_y = (chunkY * chunkSize) + y;
+
+          let noise_value = this.caveNoise(global_x * frequency, global_y * frequency);
+          // Normalize to 0-1
+          noise_value = (noise_value + 1) / 2;
+
           const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
-          if (caveNoiseValue > caveThreshold && !isSurface) {
+          if (noise_value < cave_threshold && !isSurface) {
             chunkGrid.setTile(x, y, 0);
           }
         }
