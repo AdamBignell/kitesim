@@ -22,10 +22,10 @@ export default class LevelGenerator {
     const chunkWidthPixels = chunkSize * tileSize;
 
     const surfaceVertices = [];
-    const terrainNoiseScale = 150;
-    const terrainAmplitude = 4 * tileSize;
+    const terrainNoiseScale = 300;
+    const terrainAmplitude = 2 * tileSize;
     const worldCenterY = this.scene.scale.height / 1.5;
-    const step = 16;
+    const step = 8;
 
     for (let x = 0; x <= chunkWidthPixels; x += step) {
       const worldX = chunkWorldX + x;
@@ -50,7 +50,10 @@ export default class LevelGenerator {
 
     const graphics = this.scene.add.graphics();
     graphics.fillStyle(0x228B22, 1);
-    graphics.fillPoints(groundPolygon);
+    // A complex body is made of convex parts. We must render each part.
+    for (let i = 1; i < terrainBody.parts.length; i++) {
+        graphics.fillPoints(terrainBody.parts[i].vertices);
+    }
 
     const container = this.scene.add.container(0, 0, [graphics]);
     container.setData('matterBody', terrainBody);
@@ -68,10 +71,10 @@ export default class LevelGenerator {
     const chunkHeightPixels = this.scene.scale.height;
 
     const surfaceVertices = [];
-    const terrainNoiseScale = 150;
-    const terrainAmplitude = 4 * tileSize;
+    const terrainNoiseScale = 300;
+    const terrainAmplitude = 2 * tileSize;
     const worldCenterY = this.scene.scale.height / 1.5;
-    const step = 16;
+    const step = 8;
 
     for (let x = 0; x <= chunkWidthPixels; x += step) {
       const worldX = x;
@@ -115,7 +118,10 @@ export default class LevelGenerator {
 
     const graphics = this.scene.add.graphics();
     graphics.fillStyle(0x228B22, 1);
-    graphics.fillPoints(groundPolygon);
+    // A complex body is made of convex parts. We must render each part.
+    for (let i = 1; i < terrainBody.parts.length; i++) {
+        graphics.fillPoints(terrainBody.parts[i].vertices);
+    }
 
     const container = this.scene.add.container(0, 0, [graphics]);
     container.setData('matterBody', terrainBody);
