@@ -56,10 +56,6 @@ export default class GameScene extends Phaser.Scene {
     // --- Initial World Generation and Player Setup ---
     // Create textures for different platform types
     const graphics = this.add.graphics();
-    // Default ground (black)
-    graphics.fillStyle(0x000000, 1);
-    graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
-    graphics.generateTexture('platform_solid', this.TILE_SIZE, this.TILE_SIZE);
     // One-way platforms (green)
     graphics.fillStyle(0x00ff00, 1);
     graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);

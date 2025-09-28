@@ -1,5 +1,6 @@
-import { createNoise2D } from 'simplex-noise';
+import { Noise } from 'noisejs';
 import Grid from './generation/Grid';
+import CaveGenerator from './generation/CaveGenerator';
 import * as Structures from './generation/structures';
 import GreedyMesher from './generation/GreedyMesher';
 import SplinePathGenerator from './generation/SplinePathGenerator';
@@ -10,7 +11,7 @@ export default class LevelGenerator {
     this.scene = scene;
     this.structures = Object.values(Structures);
     this.pcp = pcp;
-    this.noise = createNoise2D();
+    this.noise = new Noise(Math.random());
     const rhythmCalculator = new RhythmNodeCalculator(pcp);
     this.pathGenerator = new SplinePathGenerator(rhythmCalculator);
   }
@@ -32,7 +33,7 @@ export default class LevelGenerator {
       const splineHeight = splinePoint.y;
 
       // 2. Add noise for local variation
-      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseValue = this.noise.perlin2(worldX / terrainNoiseScale, 0);
       const noiseOffset = noiseValue * terrainAmplitude;
 
       // 3. Combine them to get the final terrain height
@@ -45,23 +46,19 @@ export default class LevelGenerator {
       }
     }
 
-    // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25; // How "zoomed-in" the cave noise is
-    const caveThreshold = 0.6; // Value above which a tile becomes empty space
+    // --- Cellular Automata for Cave Generation ---
+    const caveGrid = new Grid(chunkSize, chunkSize);
+    const caveGenerator = new CaveGenerator(caveGrid);
+    // B45678/S345678 rule to prevent checkerboards, with a lower fill probability for sparser caves.
+    const processedCaveGrid = caveGenerator.generate(5, 0.35, 3, 3);
 
+    // Carve the generated caves out of the main chunk grid
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
-        // Only try to carve caves below the surface
         if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
-
-          // We also check that we are not carving the top-most layer of the terrain
           const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
-
-          if (caveNoiseValue > caveThreshold && !isSurface) {
-            chunkGrid.setTile(x, y, 0); // 0 represents an empty tile
+          if (processedCaveGrid.getTile(x, y) === 0 && !isSurface) {
+            chunkGrid.setTile(x, y, 0);
           }
         }
       }
@@ -149,24 +146,25 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-
-      let texture = 'platform_solid';
-      if (mesh.tile === 2) {
-        texture = 'platform_one_way';
-      } else if (mesh.tile === 3) {
-        texture = 'platform_prefab';
-      }
-
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
-      newPlatform.setOrigin(0,0);
+      const platformWidth = mesh.width * tileSize;
+      const platformHeight = mesh.height * tileSize;
 
       if (mesh.tile === 2) { // One-way platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_one_way');
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         oneWayPlatforms.add(newPlatform);
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid or Prefab platform
+      } else if (mesh.tile === 3) { // Prefab platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_prefab');
+        newPlatform.setOrigin(0,0);
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else { // Solid platform
+        const newPlatform = this.scene.add.rectangle(platformX, platformY, platformWidth, platformHeight, 0x000000);
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
@@ -192,7 +190,7 @@ export default class LevelGenerator {
       const splinePoint = this.pathGenerator.getPointAtWorldX(worldX / 20);
       const splineHeight = splinePoint.y;
 
-      const noiseValue = this.noise(worldX / terrainNoiseScale, 0);
+      const noiseValue = this.noise.perlin2(worldX / terrainNoiseScale, 0);
       const noiseOffset = noiseValue * terrainAmplitude;
 
       const terrainHeight = Math.round(worldCenterY + splineHeight + noiseOffset);
@@ -204,18 +202,18 @@ export default class LevelGenerator {
       }
     }
 
-    // --- 2D Noise for Cave Generation ---
-    const caveNoiseScale = 25;
-    const caveThreshold = 0.6;
+    // --- Cellular Automata for Cave Generation ---
+    const caveGrid = new Grid(chunkSize, chunkSize);
+    const caveGenerator = new CaveGenerator(caveGrid);
+    // B45678/S345678 rule to prevent checkerboards, with a lower fill probability for sparser caves.
+    const processedCaveGrid = caveGenerator.generate(5, 0.35, 3, 3);
 
+    // Carve the generated caves out of the main chunk grid
     for (let x = 0; x < chunkSize; x++) {
       for (let y = 0; y < chunkSize; y++) {
         if (chunkGrid.getTile(x, y) === 1) {
-          const worldX = (chunkX * chunkSize) + x;
-          const worldY = (chunkY * chunkSize) + y;
-          const caveNoiseValue = this.noise(worldX / caveNoiseScale, worldY / caveNoiseScale);
           const isSurface = (y > 0 && chunkGrid.getTile(x, y - 1) === 0);
-          if (caveNoiseValue > caveThreshold && !isSurface) {
+          if (processedCaveGrid.getTile(x, y) === 0 && !isSurface) {
             chunkGrid.setTile(x, y, 0);
           }
         }
@@ -289,24 +287,25 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-
-      let texture = 'platform_solid';
-      if (mesh.tile === 2) {
-        texture = 'platform_one_way';
-      } else if (mesh.tile === 3) {
-        texture = 'platform_prefab';
-      }
-
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
-      newPlatform.setOrigin(0,0);
+      const platformWidth = mesh.width * tileSize;
+      const platformHeight = mesh.height * tileSize;
 
       if (mesh.tile === 2) { // One-way platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_one_way');
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         oneWayPlatforms.add(newPlatform);
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid or Prefab platform
+      } else if (mesh.tile === 3) { // Prefab platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_prefab');
+        newPlatform.setOrigin(0,0);
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else { // Solid platform
+        const newPlatform = this.scene.add.rectangle(platformX, platformY, platformWidth, platformHeight, 0x000000);
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }

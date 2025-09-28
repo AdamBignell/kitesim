@@ -46,6 +46,9 @@ describe('LevelGenerator', () => {
         },
       },
       add: {
+        rectangle: jest.fn().mockReturnValue({
+          setOrigin: jest.fn(),
+        }),
         tileSprite: jest.fn().mockReturnValue({
           setOrigin: jest.fn(),
         }),
