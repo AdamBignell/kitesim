@@ -7,10 +7,14 @@ jest.mock('../src/game/LevelGenerator_Arcade', () => {
     return jest.fn().mockImplementation(() => {
         return {
             generateChunk: jest.fn().mockReturnValue({
-                platforms: { destroy: jest.fn() }
+                platforms: { destroy: jest.fn() },
+                oneWayPlatforms: { destroy: jest.fn() },
+                collectibles: { destroy: jest.fn(), getChildren: jest.fn().mockReturnValue([]) },
             }),
             generateInitialChunkAndSpawnPoint: jest.fn().mockReturnValue({
                 platforms: { destroy: jest.fn() },
+                oneWayPlatforms: { destroy: jest.fn() },
+                collectibles: { destroy: jest.fn(), getChildren: jest.fn().mockReturnValue([]) },
                 spawnPoint: { x: 150, y: 250 }
             })
         };
@@ -60,6 +64,11 @@ describe('GameScene', () => {
       }
     };
     scene.physics = scene.sys.game.scene.scenes[0].physics;
+    scene.physics.add.group = jest.fn().mockReturnValue({
+        getChildren: jest.fn().mockReturnValue([]),
+        destroy: jest.fn(),
+    });
+    scene.physics.add.overlap = jest.fn();
     scene.anims = scene.sys.game.scene.scenes[0].anims;
     scene.input = scene.sys.game.scene.scenes[0].input;
     scene.time = scene.sys.game.scene.scenes[0].time;
