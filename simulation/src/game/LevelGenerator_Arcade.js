@@ -95,7 +95,7 @@ export default class LevelGenerator {
     }
 
     // --- Place Floating One-Way Platforms ---
-    const oneWayPlatformChance = 0.4;
+    const oneWayPlatformChance = 0.7; // Increased from 0.4
     if (chunkX > 0 && Math.random() < oneWayPlatformChance) {
         const structure = Structures.oneWayPlatform;
         const numPlatforms = Math.floor(Math.random() * 4) + 2; // 2 to 5 platforms
@@ -149,7 +149,15 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
+
+      let texture = 'platform_solid';
+      if (mesh.tile === 2) {
+        texture = 'platform_one_way';
+      } else if (mesh.tile === 3) {
+        texture = 'platform_prefab';
+      }
+
+      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
       newPlatform.setOrigin(0,0);
 
       if (mesh.tile === 2) { // One-way platform
@@ -158,7 +166,7 @@ export default class LevelGenerator {
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid platform
+      } else { // Solid or Prefab platform
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
@@ -281,7 +289,15 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
+
+      let texture = 'platform_solid';
+      if (mesh.tile === 2) {
+        texture = 'platform_one_way';
+      } else if (mesh.tile === 3) {
+        texture = 'platform_prefab';
+      }
+
+      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
       newPlatform.setOrigin(0,0);
 
       if (mesh.tile === 2) { // One-way platform
@@ -290,7 +306,7 @@ export default class LevelGenerator {
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid platform
+      } else { // Solid or Prefab platform
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
