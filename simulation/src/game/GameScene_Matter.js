@@ -84,10 +84,41 @@ export default class GameScene extends Phaser.Scene {
         if (otherBody.isStatic) {
           const collisionNormal = pair.collision.normal;
           if (collisionNormal.y < -0.5) { this.onGround = true; }
-          if (collisionNormal.x > 0.5) { this.onWallLeft = true; }
-          if (collisionNormal.x < -0.5) { this.onWallRight = true; }
+          // Wall checks should only apply to solid terrain, not one-way platforms
+          if (otherBody.label === 'terrain' && collisionNormal.x > 0.5) { this.onWallLeft = true; }
+          if (otherBody.label === 'terrain' && collisionNormal.x < -0.5) { this.onWallRight = true; }
         }
       }
+    });
+
+    this.matter.world.on('collisionstart', (event) => {
+        for (let i = 0; i < event.pairs.length; i++) {
+            const pair = event.pairs[i];
+            let playerBody;
+            let platformBody;
+
+            if (pair.bodyA.label === 'player' && pair.bodyB.label === 'oneWayPlatform') {
+                playerBody = pair.bodyA;
+                platformBody = pair.bodyB;
+            } else if (pair.bodyB.label === 'player' && pair.bodyA.label === 'oneWayPlatform') {
+                playerBody = pair.bodyB;
+                platformBody = pair.bodyA;
+            } else {
+                continue;
+            }
+
+            const playerBottom = playerBody.bounds.max.y;
+            const platformTop = platformBody.bounds.min.y;
+
+            // Only collide if the player is moving down and is above the platform.
+            // A small buffer is added to platformTop to prevent side-sticking.
+            if (playerBody.velocity.y >= 0 && playerBottom <= platformTop + 5) {
+                // This is a valid collision, let it happen.
+            } else {
+                // This is not a valid collision (e.g., jumping up through it), so disable it.
+                pair.isActive = false;
+            }
+        }
     });
 
     this.anims.create({ key: 'idle', frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 3 }), frameRate: 5, repeat: -1 });
