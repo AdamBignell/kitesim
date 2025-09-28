@@ -182,7 +182,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // In the create() method
-    this.time.addEvent({
+    this.aiTimer = this.time.addEvent({
       delay: 2000, // AI makes a new decision every 2 seconds
       callback: this.updateAIAction,
       callbackScope: this,
@@ -218,6 +218,13 @@ export default class GameScene extends Phaser.Scene {
     }
     // Return the new state of player control
     return !this.isAIControlled;
+  }
+
+  shutdown() {
+    if (this.aiTimer) {
+        this.aiTimer.destroy();
+        this.aiTimer = null;
+    }
   }
 
   collectItem(player, collectible) {
