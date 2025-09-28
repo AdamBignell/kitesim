@@ -49,14 +49,26 @@ export default class GameScene extends Phaser.Scene {
 
     const { platforms: initialPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
 
+    const { width, height } = { width: 32, height: 32 };
+
+    const mainBody = this.matter.bodies.rectangle(0, 0, width * 0.8, height, { chamfer: { radius: 5 } });
+    const bottomSensor = this.matter.bodies.rectangle(0, height * 0.5, width * 0.5, 5, { isSensor: true });
+    const leftSensor = this.matter.bodies.rectangle(-width * 0.45, 0, 5, height * 0.8, { isSensor: true });
+    const rightSensor = this.matter.bodies.rectangle(width * 0.45, 0, 5, height * 0.8, { isSensor: true });
+
     this.player = this.matter.add.sprite(spawnPoint.x, spawnPoint.y, 'idle', null, {
-      label: 'player'
+        parts: [mainBody, bottomSensor, leftSensor, rightSensor],
+        friction: 0.01,
+        label: 'player'
     });
 
-    const { width, height } = this.player;
-    this.player.setRectangle(width * 0.8, height, { chamfer: { radius: 5 } });
+    this.sensors = {
+        bottom: this.player.body.parts[2],
+        left: this.player.body.parts[3],
+        right: this.player.body.parts[4],
+    };
+
     this.player.setFixedRotation();
-    this.player.setFriction(0.01);
 
     this.activeChunks.set('0,0', { platforms: initialPlatforms });
 
@@ -68,27 +80,6 @@ export default class GameScene extends Phaser.Scene {
         y: Math.floor(this.player.y / (this.CHUNK_SIZE * this.TILE_SIZE))
     };
     this.updateActiveChunks();
-
-    this.matter.world.on('collisionactive', (event) => {
-      for (let i = 0; i < event.pairs.length; i++) {
-        const pair = event.pairs[i];
-        let otherBody;
-        if (pair.bodyA.label === 'player') {
-          otherBody = pair.bodyB;
-        } else if (pair.bodyB.label === 'player') {
-          otherBody = pair.bodyA;
-        } else {
-          continue;
-        }
-
-        if (otherBody.isStatic) {
-          const collisionNormal = pair.collision.normal;
-          if (collisionNormal.y < -0.5) { this.onGround = true; }
-          if (collisionNormal.x > 0.5) { this.onWallLeft = true; }
-          if (collisionNormal.x < -0.5) { this.onWallRight = true; }
-        }
-      }
-    });
 
     this.anims.create({ key: 'idle', frames: this.anims.generateFrameNumbers('idle', { start: 0, end: 3 }), frameRate: 5, repeat: -1 });
     this.anims.create({ key: 'walk', frames: this.anims.generateFrameNumbers('walk', { start: 0, end: 7 }), frameRate: 12, repeat: -1 });
@@ -117,56 +108,89 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  togglePlayerControl(isUICall = false) {
-    if (!isUICall && this.isAIControlled) return !this.isAIControlled;
+  togglePlayerControl() {
     this.isAIControlled = !this.isAIControlled;
-    if (!this.isAIControlled) this.player.setVelocityX(0);
+    if (!this.isAIControlled) {
+      this.player.setVelocityX(0);
+    }
     return !this.isAIControlled;
   }
 
   update() {
-    this.onGround = false;
-    this.onWallLeft = false;
-    this.onWallRight = false;
+    // Sensor-based collision detection
+    const allBodies = this.matter.world.getAllBodies();
+    const isColliding = (sensor) => {
+      const collisions = this.matter.query.collides(sensor, allBodies);
+      for (let i = 0; i < collisions.length; i++) {
+        const pair = collisions[i];
+        const otherBody = pair.bodyA.isSensor ? pair.bodyB : pair.bodyA;
+        if (otherBody.isStatic || (otherBody.parent && otherBody.parent.isStatic)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    this.onGround = isColliding(this.sensors.bottom);
+    this.onWallLeft = isColliding(this.sensors.left) && !this.onGround;
+    this.onWallRight = isColliding(this.sensors.right) && !this.onGround;
 
+    // --- Dynamic Chunk Loading/Unloading ---
     const playerWorldX = this.player.x;
     const playerWorldY = this.player.y;
     const chunkX = Math.floor(playerWorldX / (this.CHUNK_SIZE * this.TILE_SIZE));
     const chunkY = Math.floor(playerWorldY / (this.CHUNK_SIZE * this.TILE_SIZE));
-
     if (chunkX !== this.playerChunkCoord.x || chunkY !== this.playerChunkCoord.y) {
       this.playerChunkCoord = { x: chunkX, y: chunkY };
       this.updateActiveChunks();
     }
 
+    // Reset jumps if touching the ground
     if (this.onGround) {
       this.jumps = 0;
     }
 
-    const isJumpKeyDown = Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.space);
+    // Check for jump input
+    const isJumpKeyDown = Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.up) ||
+                          Phaser.Input.Keyboard.JustDown(this.keys.space);
 
     if (this.isAIControlled) {
+      // --- AI Control Logic ---
       const targetSpeed = this.isAISprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
-      if (this.aiAction === 'left') this.player.setVelocityX(-targetSpeed);
-      else if (this.aiAction === 'right') this.player.setVelocityX(targetSpeed);
-      else this.player.setVelocityX(0);
+      if (this.aiAction === 'left') {
+        this.player.setVelocityX(-targetSpeed);
+      } else if (this.aiAction === 'right') {
+        this.player.setVelocityX(targetSpeed);
+      } else {
+        this.player.setVelocityX(0);
+      }
     } else {
+      // --- Player Control Logic ---
       const isSprinting = this.keyShift.isDown;
       const targetSpeed = isSprinting ? this.SPRINT_SPEED : this.WALK_SPEED;
       const isPressingLeft = this.cursors.left.isDown || this.keys.left.isDown;
       const isPressingRight = this.cursors.right.isDown || this.keys.right.isDown;
 
-      const isWallSliding = ((this.onWallLeft && isPressingLeft) || (this.onWallRight && isPressingRight)) && !this.onGround;
+      const isWallSliding = (this.onWallLeft && isPressingLeft) || (this.onWallRight && isPressingRight);
       if (isWallSliding) {
-        this.player.setVelocityY(this.WALL_SLIDE_SPEED);
+        if (this.player.body.velocity.y > this.WALL_SLIDE_SPEED) {
+          this.player.setVelocityY(this.WALL_SLIDE_SPEED);
+        }
       }
 
       if (!this.isWallJumping) {
-        if (isPressingLeft) { this.player.setVelocityX(-targetSpeed); }
-        else if (isPressingRight) { this.player.setVelocityX(targetSpeed); }
-        else { this.player.setVelocityX(0); }
+        if (isPressingLeft) {
+          this.player.setVelocityX(-targetSpeed);
+          this.lastDirection = 'left';
+        } else if (isPressingRight) {
+          this.player.setVelocityX(targetSpeed);
+          this.lastDirection = 'right';
+        } else {
+          this.player.setVelocityX(0);
+        }
       }
 
+      // Jumping
       if (isJumpKeyDown) {
         if (isWallSliding) {
           this.isWallJumping = true;
@@ -181,17 +205,23 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
+    // --- Animation Logic ---
     const velocity = this.player.body.velocity;
     if (!this.onGround) {
       this.player.anims.play('jump', true);
     } else if (Math.abs(velocity.x) > 0.1) {
-      this.player.anims.play(this.isAIControlled ? this.isAISprinting ? 'sprint' : 'walk' : this.keyShift.isDown ? 'sprint' : 'walk', true);
+      const isSprinting = this.isAIControlled ? this.isAISprinting : this.keyShift.isDown;
+      this.player.anims.play(isSprinting ? 'sprint' : 'walk', true);
     } else {
       this.player.anims.play('idle', true);
     }
 
-    if (velocity.x < -0.1) { this.player.setFlipX(true); }
-    else if (velocity.x > 0.1) { this.player.setFlipX(false); }
+    // Flip sprite based on direction
+    if (velocity.x < -0.1) {
+      this.player.setFlipX(true);
+    } else if (velocity.x > 0.1) {
+      this.player.setFlipX(false);
+    }
   }
 
   updateAIAction() {

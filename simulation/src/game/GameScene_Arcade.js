@@ -170,23 +170,11 @@ export default class GameScene extends Phaser.Scene {
       });
   }
 
-  togglePlayerControl(isUICall = false) {
-    if (!isUICall) {
-      // If the call is not from the UI, check if AI is already active.
-      // If AI is active, do nothing. This prevents accidental toggling from keyboard events.
-      if (this.isAIControlled) {
-        return !this.isAIControlled;
-      }
-    }
-
+  togglePlayerControl() {
     this.isAIControlled = !this.isAIControlled;
-    console.log(`Control mode switched. AI active: ${this.isAIControlled}`);
-
-    // If we switch to player control, reset the player's velocity
     if (!this.isAIControlled) {
       this.player.setVelocityX(0);
     }
-    // Return the new state of player control
     return !this.isAIControlled;
   }
 

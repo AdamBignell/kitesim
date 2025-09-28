@@ -13,7 +13,9 @@ describe('LevelGenerator_Matter', () => {
       scale: { height: 720 },
       matter: {
         add: {
-          fromVertices: jest.fn().mockReturnValue({}),
+          fromVertices: jest.fn().mockReturnValue({
+            parts: [{}, { vertices: [] }] // Mock parts array for rendering
+          }),
         }
       },
       add: {

@@ -33,15 +33,23 @@ describe('GameScene_Matter', () => {
     scene.matter = {
       add: {
         sprite: jest.fn().mockReturnValue({
-          setRectangle: jest.fn(),
           setFixedRotation: jest.fn(),
-          setFriction: jest.fn(),
-          body: { velocity: { x: 0, y: 0 } },
+          body: {
+            velocity: { x: 0, y: 0 },
+            parts: [{}, {}, {}, {}, {}] // Mock parts array, needs at least 5 elements
+          },
           setFlipX: jest.fn(),
         }),
       },
+      bodies: {
+        rectangle: jest.fn().mockReturnValue({}) // Mock function
+      },
       world: {
         on: jest.fn(),
+        getAllBodies: jest.fn().mockReturnValue([]), // for update()
+      },
+      query: {
+          collides: jest.fn().mockReturnValue([]) // for update()
       },
       config: {
           gravity: { y: 1 }
