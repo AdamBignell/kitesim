@@ -68,9 +68,27 @@ export default class GameScene extends Phaser.Scene {
     graphics.fillStyle(0x808080, 1);
     graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
     graphics.generateTexture('platform_prefab', this.TILE_SIZE, this.TILE_SIZE);
+    // Collectibles (blue)
+    graphics.fillStyle(0x0000ff, 1);
+    graphics.fillRect(0, 0, this.TILE_SIZE / 2, this.TILE_SIZE / 2); // Smaller than a full tile
+    graphics.generateTexture('collectible', this.TILE_SIZE, this.TILE_SIZE);
     graphics.destroy();
+
+    // Setup a single collectibles group for the entire scene
+    this.collectibles = this.physics.add.group({
+        allowGravity: false
+    });
+    this.physics.add.overlap(this.player, this.collectibles, this.collectItem, null, this);
+
     // Generate the initial chunk and get the spawn point
-    const { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+    const { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, collectibles: initialCollectibles, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+
+    // Move collectibles from the initial chunk into the main scene group
+    initialCollectibles.getChildren().forEach(child => {
+        child.setData('chunkKey', '0,0'); // Tag with chunk key for unloading
+        this.collectibles.add(child);
+    });
+    initialCollectibles.destroy(); // The temporary group is no longer needed
 
     // Create the player at the dynamic spawn point
     this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
@@ -200,6 +218,12 @@ export default class GameScene extends Phaser.Scene {
     }
     // Return the new state of player control
     return !this.isAIControlled;
+  }
+
+  collectItem(player, collectible) {
+    collectible.disableBody(true, true); // This will hide the collectible and disable its physics body
+    // Here you could add logic to increment a score, play a sound, etc.
+    console.log("Collectible gathered!");
   }
 
   update() {
@@ -364,11 +388,19 @@ export default class GameScene extends Phaser.Scene {
           newActiveChunks.set(chunkKey, chunkData);
         } else {
           // This is a new chunk that needs to be generated
-          const { platforms: newChunkPlatforms, oneWayPlatforms: newOneWayPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
+          const { platforms: newChunkPlatforms, oneWayPlatforms: newOneWayPlatforms, collectibles: newCollectibles } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
           const newCollider = this.physics.add.collider(this.player, newChunkPlatforms);
           const newOneWayCollider = this.physics.add.collider(this.player, newOneWayPlatforms, null, (player, platform) => {
             return player.body.velocity.y >= 0;
           }, this);
+
+          // Move collectibles into the main group and tag them
+          newCollectibles.getChildren().forEach(child => {
+            child.setData('chunkKey', chunkKey);
+            this.collectibles.add(child);
+          });
+          newCollectibles.destroy();
+
           newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, oneWayPlatforms: newOneWayPlatforms, collider: newCollider, oneWayCollider: newOneWayCollider });
         }
       }
@@ -388,6 +420,12 @@ export default class GameScene extends Phaser.Scene {
           if (chunkData.oneWayCollider) {
             chunkData.oneWayCollider.destroy();
           }
+          // Remove collectibles associated with the unloaded chunk
+          this.collectibles.getChildren().forEach(collectible => {
+            if (collectible.getData('chunkKey') === key) {
+                collectible.destroy();
+            }
+          });
         }
       }
     }

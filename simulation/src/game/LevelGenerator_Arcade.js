@@ -4,6 +4,10 @@ import * as Structures from './generation/structures';
 import GreedyMesher from './generation/GreedyMesher';
 import SplinePathGenerator from './generation/SplinePathGenerator';
 import RhythmNodeCalculator from './generation/RhythmNodeCalculator';
+import SheerCliffClimbChallenge from './generation/challenges/SheerCliffClimbChallenge.js';
+import CaveExplorationChallenge from './generation/challenges/CaveExplorationChallenge.js';
+import OneWayPlatformChallenge from './generation/challenges/OneWayPlatformChallenge.js';
+
 
 export default class LevelGenerator {
   constructor(scene, pcp) {
@@ -13,6 +17,12 @@ export default class LevelGenerator {
     this.noise = createNoise2D();
     const rhythmCalculator = new RhythmNodeCalculator(pcp);
     this.pathGenerator = new SplinePathGenerator(rhythmCalculator);
+
+    this.challenges = [
+        new SheerCliffClimbChallenge(scene, pcp),
+        new CaveExplorationChallenge(scene, pcp),
+        new OneWayPlatformChallenge(scene, pcp)
+    ];
   }
 
   generateChunk(chunkX, chunkY, chunkSize, tileSize) {
@@ -94,23 +104,27 @@ export default class LevelGenerator {
       }
     }
 
-    // --- Place Floating One-Way Platforms ---
-    const oneWayPlatformChance = 0.7; // Increased from 0.4
-    if (chunkX > 0 && Math.random() < oneWayPlatformChance) {
-        const structure = Structures.oneWayPlatform;
-        const numPlatforms = Math.floor(Math.random() * 4) + 2; // 2 to 5 platforms
-        const startX = Math.floor(Math.random() * (chunkSize - (structure.width * numPlatforms) - 10)) + 5;
-        const startY = Math.floor(Math.random() * 20) + 15; // Place them in the upper-middle part of the chunk
+    // --- Challenge Placement ---
+    const challengePlacementChance = 0.5; // 50% chance to place a challenge in a chunk
+    if (chunkX > 0 && Math.random() < challengePlacementChance) {
+        // Select a random challenge
+        const challenge = this.challenges[Math.floor(Math.random() * this.challenges.length)];
 
-        for (let i = 0; i < numPlatforms; i++) {
-            const platformX = startX + i * (structure.width + Math.floor(Math.random() * 3) + 2); // Add random spacing
-            const platformY = startY + (Math.random() > 0.5 ? -1 : 1) * Math.floor(Math.random() * 3); // slight y variation
-            if (platformX + structure.width < chunkSize && platformY > 0 && platformY < chunkSize) {
-                 // Carve out space just in case
-                chunkGrid.clearRect(platformX, platformY, structure.width, structure.height);
-                // Stamp the one-way platform
-                chunkGrid.stamp(platformX, platformY, structure.grid);
+        // For now, let's just find a random suitable spot.
+        // In the future, this could be more sophisticated.
+        const startX = Math.floor(Math.random() * (chunkSize - 20)) + 10; // Avoid edges
+        let startY = -1;
+
+        // Find a ground position to start the challenge
+        for (let y = 5; y < chunkSize - 5; y++) {
+            if (challenge.isSuitablePlacement(chunkGrid, startX, y)) {
+                startY = y;
+                break;
             }
+        }
+
+        if (startY !== -1) {
+            challenge.generate(chunkGrid, startX, startY, {});
         }
     }
 
@@ -143,6 +157,7 @@ export default class LevelGenerator {
 
     const meshes = GreedyMesher.mesh(chunkGrid);
     const oneWayPlatforms = this.scene.physics.add.staticGroup();
+    const collectibles = this.scene.physics.add.staticGroup();
 
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
@@ -155,6 +170,8 @@ export default class LevelGenerator {
         texture = 'platform_one_way';
       } else if (mesh.tile === 3) {
         texture = 'platform_prefab';
+      } else if (mesh.tile === 4) {
+        texture = 'collectible';
       }
 
       const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
@@ -166,13 +183,16 @@ export default class LevelGenerator {
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
+      } else if (mesh.tile === 4) { // Collectible
+        this.scene.physics.add.existing(newPlatform, true);
+        collectibles.add(newPlatform);
       } else { // Solid or Prefab platform
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
     }
 
-    return { platforms: newPlatforms, oneWayPlatforms, grid: chunkGrid };
+    return { platforms: newPlatforms, oneWayPlatforms, collectibles, grid: chunkGrid };
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
@@ -283,6 +303,7 @@ export default class LevelGenerator {
     // Finally, create the platform bodies from the modified chunkGrid
     const meshes = GreedyMesher.mesh(chunkGrid);
     const oneWayPlatforms = this.scene.physics.add.staticGroup();
+    const collectibles = this.scene.physics.add.staticGroup();
 
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
@@ -295,6 +316,8 @@ export default class LevelGenerator {
         texture = 'platform_one_way';
       } else if (mesh.tile === 3) {
         texture = 'platform_prefab';
+      } else if (mesh.tile === 4) {
+        texture = 'collectible';
       }
 
       const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
@@ -306,12 +329,15 @@ export default class LevelGenerator {
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
+      } else if (mesh.tile === 4) { // Collectible
+        this.scene.physics.add.existing(newPlatform, true);
+        collectibles.add(newPlatform);
       } else { // Solid or Prefab platform
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
     }
 
-    return { platforms: newPlatforms, oneWayPlatforms, spawnPoint, grid: chunkGrid };
+    return { platforms: newPlatforms, oneWayPlatforms, collectibles, spawnPoint, grid: chunkGrid };
   }
 }
