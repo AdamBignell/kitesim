@@ -74,14 +74,19 @@ export default class GameScene extends Phaser.Scene {
     graphics.generateTexture('collectible', this.TILE_SIZE, this.TILE_SIZE);
     graphics.destroy();
 
+    // Generate the initial chunk and get the spawn point
+    const { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, collectibles: initialCollectibles, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+
+    // Create the player at the dynamic spawn point
+    this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
+    this.player.setBounce(0.2);
+    this.player.setCollideWorldBounds(false); // World bounds are managed by chunk loading
+
     // Setup a single collectibles group for the entire scene
     this.collectibles = this.physics.add.group({
         allowGravity: false
     });
     this.physics.add.overlap(this.player, this.collectibles, this.collectItem, null, this);
-
-    // Generate the initial chunk and get the spawn point
-    const { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, collectibles: initialCollectibles, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
 
     // Move collectibles from the initial chunk into the main scene group
     initialCollectibles.getChildren().forEach(child => {
@@ -89,11 +94,6 @@ export default class GameScene extends Phaser.Scene {
         this.collectibles.add(child);
     });
     initialCollectibles.destroy(); // The temporary group is no longer needed
-
-    // Create the player at the dynamic spawn point
-    this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
-    this.player.setBounce(0.2);
-    this.player.setCollideWorldBounds(false); // World bounds are managed by chunk loading
 
     // Store the initial chunk in our active chunks map
     const initialCollider = this.physics.add.collider(this.player, initialPlatforms);
