@@ -20,8 +20,8 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
 
     // --- Spline and Noise-based Terrain Generation ---
-    const terrainNoiseScale = 50; // Controls the "zoom" level of the noise
-    const terrainAmplitude = 15;   // Controls the max height variation of the hills
+    const terrainNoiseScale = 150; // Controls the "zoom" level of the noise
+    const terrainAmplitude = 5;   // Controls the max height variation of the hills
     const worldCenterY = chunkSize / 2;
 
     for (let x = 0; x < chunkSize; x++) {
@@ -66,6 +66,54 @@ export default class LevelGenerator {
         }
       }
     }
+
+    // --- Structure Placement ---
+    const majorStructures = [Structures.castleTower, Structures.castleWall, Structures.pyramid];
+    const structurePlacementChance = 0.3; // 30% chance to place a major structure
+    if (chunkX > 0 && Math.random() < structurePlacementChance) {
+      const structure = majorStructures[Math.floor(Math.random() * majorStructures.length)];
+
+      const placementX = Math.floor(Math.random() * (chunkSize - structure.width - 10)) + 5;
+      let placementY = -1;
+
+      for (let y = 5; y < chunkSize - 5; y++) {
+        if (chunkGrid.getTile(placementX, y) === 1 && chunkGrid.getTile(placementX, y - 1) === 0) {
+          placementY = y;
+          break;
+        }
+      }
+
+      if (placementY !== -1) {
+        const structureBaseY = placementY - structure.height;
+        if (structureBaseY > 0) {
+          // Carve out space
+          chunkGrid.clearRect(placementX, structureBaseY, structure.width, structure.height);
+          // Stamp the structure
+          chunkGrid.stamp(placementX, structureBaseY, structure.grid);
+        }
+      }
+    }
+
+    // --- Place Floating One-Way Platforms ---
+    const oneWayPlatformChance = 0.4;
+    if (chunkX > 0 && Math.random() < oneWayPlatformChance) {
+        const structure = Structures.oneWayPlatform;
+        const numPlatforms = Math.floor(Math.random() * 4) + 2; // 2 to 5 platforms
+        const startX = Math.floor(Math.random() * (chunkSize - (structure.width * numPlatforms) - 10)) + 5;
+        const startY = Math.floor(Math.random() * 20) + 15; // Place them in the upper-middle part of the chunk
+
+        for (let i = 0; i < numPlatforms; i++) {
+            const platformX = startX + i * (structure.width + Math.floor(Math.random() * 3) + 2); // Add random spacing
+            const platformY = startY + (Math.random() > 0.5 ? -1 : 1) * Math.floor(Math.random() * 3); // slight y variation
+            if (platformX + structure.width < chunkSize && platformY > 0 && platformY < chunkSize) {
+                 // Carve out space just in case
+                chunkGrid.clearRect(platformX, platformY, structure.width, structure.height);
+                // Stamp the one-way platform
+                chunkGrid.stamp(platformX, platformY, structure.grid);
+            }
+        }
+    }
+
 
     // --- Place Rhythm-Based Platforms (after cave carving) ---
     const nodes = this.pathGenerator.getNodesInChunk(chunkX, chunkSize);
@@ -126,8 +174,8 @@ export default class LevelGenerator {
     const newPlatforms = this.scene.physics.add.staticGroup();
 
     // --- Spline and Noise-based Terrain Generation for the initial chunk ---
-    const terrainNoiseScale = 50;
-    const terrainAmplitude = 15;
+    const terrainNoiseScale = 150;
+    const terrainAmplitude = 5;
     const worldCenterY = chunkSize / 2;
 
     for (let x = 0; x < chunkSize; x++) {
