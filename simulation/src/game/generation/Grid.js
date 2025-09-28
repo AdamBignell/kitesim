@@ -122,4 +122,18 @@ export default class Grid {
       }
     }
   }
+
+  /**
+   * Creates a deep copy of the grid.
+   * @returns {Grid} A new Grid instance with the same data.
+   */
+  clone() {
+    const newGrid = new Grid(this.width, this.height);
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        newGrid.setTile(x, y, this.getTile(x, y));
+      }
+    }
+    return newGrid;
+  }
 }
