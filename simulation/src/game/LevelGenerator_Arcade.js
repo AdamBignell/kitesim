@@ -49,7 +49,8 @@ export default class LevelGenerator {
     // --- Cellular Automata for Cave Generation ---
     const caveGrid = new Grid(chunkSize, chunkSize);
     const caveGenerator = new CaveGenerator(caveGrid);
-    const processedCaveGrid = caveGenerator.generate(5, 0.45); // iterations, fill probability
+    // B45678/S345678 rule to prevent checkerboards, with a lower fill probability for sparser caves.
+    const processedCaveGrid = caveGenerator.generate(5, 0.35, 3, 3);
 
     // Carve the generated caves out of the main chunk grid
     for (let x = 0; x < chunkSize; x++) {
@@ -145,24 +146,25 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-
-      let texture = 'platform_solid';
-      if (mesh.tile === 2) {
-        texture = 'platform_one_way';
-      } else if (mesh.tile === 3) {
-        texture = 'platform_prefab';
-      }
-
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
-      newPlatform.setOrigin(0,0);
+      const platformWidth = mesh.width * tileSize;
+      const platformHeight = mesh.height * tileSize;
 
       if (mesh.tile === 2) { // One-way platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_one_way');
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         oneWayPlatforms.add(newPlatform);
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid or Prefab platform
+      } else if (mesh.tile === 3) { // Prefab platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_prefab');
+        newPlatform.setOrigin(0,0);
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else { // Solid platform
+        const newPlatform = this.scene.add.rectangle(platformX, platformY, platformWidth, platformHeight, 0x000000);
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
@@ -203,7 +205,8 @@ export default class LevelGenerator {
     // --- Cellular Automata for Cave Generation ---
     const caveGrid = new Grid(chunkSize, chunkSize);
     const caveGenerator = new CaveGenerator(caveGrid);
-    const processedCaveGrid = caveGenerator.generate(5, 0.45); // iterations, fill probability
+    // B45678/S345678 rule to prevent checkerboards, with a lower fill probability for sparser caves.
+    const processedCaveGrid = caveGenerator.generate(5, 0.35, 3, 3);
 
     // Carve the generated caves out of the main chunk grid
     for (let x = 0; x < chunkSize; x++) {
@@ -284,24 +287,25 @@ export default class LevelGenerator {
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
       const platformX = tileWorldX * tileSize;
       const platformY = tileWorldY * tileSize;
-
-      let texture = 'platform_solid';
-      if (mesh.tile === 2) {
-        texture = 'platform_one_way';
-      } else if (mesh.tile === 3) {
-        texture = 'platform_prefab';
-      }
-
-      const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, texture);
-      newPlatform.setOrigin(0,0);
+      const platformWidth = mesh.width * tileSize;
+      const platformHeight = mesh.height * tileSize;
 
       if (mesh.tile === 2) { // One-way platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_one_way');
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         oneWayPlatforms.add(newPlatform);
         newPlatform.body.checkCollision.down = false;
         newPlatform.body.checkCollision.left = false;
         newPlatform.body.checkCollision.right = false;
-      } else { // Solid or Prefab platform
+      } else if (mesh.tile === 3) { // Prefab platform
+        const newPlatform = this.scene.add.tileSprite(platformX, platformY, platformWidth, platformHeight, 'platform_prefab');
+        newPlatform.setOrigin(0,0);
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      } else { // Solid platform
+        const newPlatform = this.scene.add.rectangle(platformX, platformY, platformWidth, platformHeight, 0x000000);
+        newPlatform.setOrigin(0,0);
         this.scene.physics.add.existing(newPlatform, true);
         newPlatforms.add(newPlatform);
       }
