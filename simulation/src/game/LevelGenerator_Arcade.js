@@ -94,6 +94,8 @@ export default class LevelGenerator {
     }
 
     const meshes = GreedyMesher.mesh(chunkGrid);
+    const oneWayPlatforms = this.scene.physics.add.staticGroup();
+
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
@@ -101,11 +103,20 @@ export default class LevelGenerator {
       const platformY = tileWorldY * tileSize;
       const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
       newPlatform.setOrigin(0,0);
-      this.scene.physics.add.existing(newPlatform, true);
-      newPlatforms.add(newPlatform);
+
+      if (mesh.tile === 2) { // One-way platform
+        this.scene.physics.add.existing(newPlatform, true);
+        oneWayPlatforms.add(newPlatform);
+        newPlatform.body.checkCollision.down = false;
+        newPlatform.body.checkCollision.left = false;
+        newPlatform.body.checkCollision.right = false;
+      } else { // Solid platform
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      }
     }
 
-    return { platforms: newPlatforms, grid: chunkGrid };
+    return { platforms: newPlatforms, oneWayPlatforms, grid: chunkGrid };
   }
 
   generateInitialChunkAndSpawnPoint(chunkSize, tileSize) {
@@ -215,6 +226,8 @@ export default class LevelGenerator {
 
     // Finally, create the platform bodies from the modified chunkGrid
     const meshes = GreedyMesher.mesh(chunkGrid);
+    const oneWayPlatforms = this.scene.physics.add.staticGroup();
+
     for (const mesh of meshes) {
       const tileWorldX = (chunkX * chunkSize) + mesh.x;
       const tileWorldY = (chunkY * chunkSize) + mesh.y;
@@ -222,10 +235,19 @@ export default class LevelGenerator {
       const platformY = tileWorldY * tileSize;
       const newPlatform = this.scene.add.tileSprite(platformX, platformY, mesh.width * tileSize, mesh.height * tileSize, 'platform');
       newPlatform.setOrigin(0,0);
-      this.scene.physics.add.existing(newPlatform, true);
-      newPlatforms.add(newPlatform);
+
+      if (mesh.tile === 2) { // One-way platform
+        this.scene.physics.add.existing(newPlatform, true);
+        oneWayPlatforms.add(newPlatform);
+        newPlatform.body.checkCollision.down = false;
+        newPlatform.body.checkCollision.left = false;
+        newPlatform.body.checkCollision.right = false;
+      } else { // Solid platform
+        this.scene.physics.add.existing(newPlatform, true);
+        newPlatforms.add(newPlatform);
+      }
     }
 
-    return { platforms: newPlatforms, spawnPoint, grid: chunkGrid };
+    return { platforms: newPlatforms, oneWayPlatforms, spawnPoint, grid: chunkGrid };
   }
 }

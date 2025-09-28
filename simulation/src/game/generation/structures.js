@@ -201,3 +201,84 @@ function createFiller() {
     return new Structure(width, height, grid, snapPoints);
 }
 export const filler = createFiller();
+
+function createCastleTower() {
+    const width = 12;
+    const height = 20;
+    const grid = new Grid(width, height, 0);
+
+    // Main tower structure
+    grid.fillRect(0, 0, width, height, 1);
+
+    // Hollow out the inside
+    grid.fillRect(1, 1, width - 2, height - 1, 0);
+
+    // Crenellations at the top
+    for (let i = 0; i < width; i += 2) {
+        grid.fillRect(i, 0, 1, 1, 0);
+    }
+
+    // Internal platforms
+    grid.fillRect(1, 7, width - 2, 1, 1);
+    grid.fillRect(1, 14, width - 2, 1, 1);
+
+    // Small platform on the right
+    grid.fillRect(width - 4, 10, 3, 1, 1);
+
+    // Small platform on the left
+    grid.fillRect(1, 4, 3, 1, 1);
+
+    // Entrance
+    grid.fillRect(Math.floor(width/2) - 1, height - 3, 2, 3, 0);
+
+
+    const snapPoints = new Map([
+        ['bottom', [{ x: Math.floor(width / 2), y: height - 1 }]],
+        ['left_wall', [{ x: 0, y: height - 1 }]],
+        ['right_wall', [{ x: width - 1, y: height - 1 }]],
+    ]);
+
+    return new Structure(width, height, grid, snapPoints);
+}
+export const castleTower = createCastleTower();
+
+function createCastleWall() {
+    const width = 16;
+    const height = 8;
+    const grid = new Grid(width, height, 0);
+
+    // Wall
+    grid.fillRect(0, 0, width, height, 1);
+
+    // Crenellations
+    for (let i = 0; i < width; i += 2) {
+        grid.setTile(i, 0, 0);
+    }
+
+    // Walkway on top
+    grid.fillRect(0, 1, width, 1, 0);
+
+
+    const snapPoints = new Map([
+        ['left', [{ x: 0, y: height - 1 }]],
+        ['right', [{ x: width - 1, y: height - 1 }]],
+    ]);
+
+    return new Structure(width, height, grid, snapPoints);
+}
+export const castleWall = createCastleWall();
+
+
+function createOneWayPlatform() {
+    const width = 8;
+    const height = 1;
+    const grid = new Grid(width, height, 0);
+    // Use tile ID 2 for one-way platforms
+    grid.fillRect(0, 0, width, height, 2);
+    const snapPoints = new Map([
+        ['left', [{ x: 0, y: 0 }]],
+        ['right', [{ x: width-1, y: 0 }]],
+    ]);
+    return new Structure(width, height, grid, snapPoints);
+}
+export const oneWayPlatform = createOneWayPlatform();

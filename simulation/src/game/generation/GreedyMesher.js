@@ -5,7 +5,7 @@ export default class GreedyMesher {
   /**
    * Applies the greedy meshing algorithm to a grid.
    * @param {Grid} grid - The grid to process.
-   * @returns {Array<{x: number, y: number, width: number, height: number}>} - A list of rectangles.
+   * @returns {Array<{x: number, y: number, width: number, height: number, tile: number}>} - A list of rectangles, with their tile type.
    */
   static mesh(grid) {
     const meshes = [];
@@ -53,7 +53,7 @@ export default class GreedyMesher {
             }
           }
 
-          meshes.push({ x, y, width: meshWidth, height: meshHeight });
+          meshes.push({ x, y, width: meshWidth, height: meshHeight, tile });
         }
       }
     }
