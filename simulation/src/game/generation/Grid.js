@@ -94,4 +94,32 @@ export default class Grid {
   toArray() {
     return this.grid.map(row => row.map(tile => Number(tile)));
   }
+
+  /**
+   * Clears a rectangular area of the grid, setting it to empty (0).
+   * @param {number} x - The starting x-coordinate.
+   * @param {number} y - The starting y-coordinate.
+   * @param {number} width - The width of the rectangle.
+   * @param {number} height - The height of the rectangle.
+   */
+  clearRect(x, y, width, height) {
+    this.fillRect(x, y, width, height, 0);
+  }
+
+  /**
+   * Stamps another grid onto this one at a specified offset.
+   * @param {number} x - The x-coordinate where the stamp should be placed.
+   * @param {number} y - The y-coordinate where the stamp should be placed.
+   * @param {Grid} gridToStamp - The grid to stamp.
+   */
+  stamp(x, y, gridToStamp) {
+    for (let j = 0; j < gridToStamp.height; j++) {
+      for (let i = 0; i < gridToStamp.width; i++) {
+        const tile = gridToStamp.getTile(i, j);
+        if (tile !== 0) { // Only stamp non-empty tiles
+          this.setTile(x + i, y + j, tile);
+        }
+      }
+    }
+  }
 }

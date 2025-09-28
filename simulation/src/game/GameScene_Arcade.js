@@ -54,14 +54,23 @@ export default class GameScene extends Phaser.Scene {
 
 
     // --- Initial World Generation and Player Setup ---
-    // Create a simple black texture for platforms
+    // Create textures for different platform types
     const graphics = this.add.graphics();
+    // Default ground (black)
     graphics.fillStyle(0x000000, 1);
     graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
-    graphics.generateTexture('platform', this.TILE_SIZE, this.TILE_SIZE);
+    graphics.generateTexture('platform_solid', this.TILE_SIZE, this.TILE_SIZE);
+    // One-way platforms (green)
+    graphics.fillStyle(0x00ff00, 1);
+    graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
+    graphics.generateTexture('platform_one_way', this.TILE_SIZE, this.TILE_SIZE);
+    // Prefab/Structure blocks (grey)
+    graphics.fillStyle(0x808080, 1);
+    graphics.fillRect(0, 0, this.TILE_SIZE, this.TILE_SIZE);
+    graphics.generateTexture('platform_prefab', this.TILE_SIZE, this.TILE_SIZE);
     graphics.destroy();
     // Generate the initial chunk and get the spawn point
-    const { platforms: initialPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
+    const { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, spawnPoint } = this.levelGenerator.generateInitialChunkAndSpawnPoint(this.CHUNK_SIZE, this.TILE_SIZE);
 
     // Create the player at the dynamic spawn point
     this.player = this.physics.add.sprite(spawnPoint.x, spawnPoint.y, 'idle');
@@ -70,7 +79,10 @@ export default class GameScene extends Phaser.Scene {
 
     // Store the initial chunk in our active chunks map
     const initialCollider = this.physics.add.collider(this.player, initialPlatforms);
-    this.activeChunks.set('0,0', { platforms: initialPlatforms, collider: initialCollider });
+    const initialOneWayCollider = this.physics.add.collider(this.player, initialOneWayPlatforms, null, (player, platform) => {
+      return player.body.velocity.y >= 0;
+    }, this);
+    this.activeChunks.set('0,0', { platforms: initialPlatforms, oneWayPlatforms: initialOneWayPlatforms, collider: initialCollider, oneWayCollider: initialOneWayCollider });
 
     // --- Camera ---
     this.cameras.main.startFollow(this.player);
@@ -352,9 +364,12 @@ export default class GameScene extends Phaser.Scene {
           newActiveChunks.set(chunkKey, chunkData);
         } else {
           // This is a new chunk that needs to be generated
-          const { platforms: newChunkPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
+          const { platforms: newChunkPlatforms, oneWayPlatforms: newOneWayPlatforms } = this.levelGenerator.generateChunk(x, y, this.CHUNK_SIZE, this.TILE_SIZE);
           const newCollider = this.physics.add.collider(this.player, newChunkPlatforms);
-          newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, collider: newCollider });
+          const newOneWayCollider = this.physics.add.collider(this.player, newOneWayPlatforms, null, (player, platform) => {
+            return player.body.velocity.y >= 0;
+          }, this);
+          newActiveChunks.set(chunkKey, { platforms: newChunkPlatforms, oneWayPlatforms: newOneWayPlatforms, collider: newCollider, oneWayCollider: newOneWayCollider });
         }
       }
     }
@@ -365,8 +380,14 @@ export default class GameScene extends Phaser.Scene {
         if (chunkData) {
           // Destroy the platforms and their physics bodies
           chunkData.platforms.destroy(true, true);
+          if (chunkData.oneWayPlatforms) {
+            chunkData.oneWayPlatforms.destroy(true, true);
+          }
           // Destroy the collider object
           chunkData.collider.destroy();
+          if (chunkData.oneWayCollider) {
+            chunkData.oneWayCollider.destroy();
+          }
         }
       }
     }
