@@ -3,29 +3,44 @@
 import { useEffect, useRef, useState } from 'react';
 
 import getPhaserConfig from '../game/phaserConfig';
+import GameScene from '../game/GameScene'; // Import the new unified GameScene
 
-// We import Phaser dynamically to ensure it's only loaded on the client side.
+// This function now initializes the game with a physics-agnostic GameScene
+// and a dynamically selected physics adapter.
 const initializePhaser = async (mode) => {
   const Phaser = await import('phaser');
-  let GameScene;
+  let PhysicsAdapter;
 
+  // Dynamically import the correct adapter based on the selected mode.
   if (mode === 'matter') {
-    // Dynamically import the Matter.js scene
-    const sceneModule = await import('../game/GameScene_Matter.js');
-    GameScene = sceneModule.default;
+    const adapterModule = await import('../game/physics/MatterAdapter.js');
+    PhysicsAdapter = adapterModule.default;
   } else {
-    // Dynamically import the Arcade scene
-    const sceneModule = await import('../game/GameScene_Arcade.js');
-    GameScene = sceneModule.default;
+    const adapterModule = await import('../game/physics/ArcadeAdapter.js');
+    PhysicsAdapter = adapterModule.default;
   }
 
-  // Get the dynamic config
-  const config = getPhaserConfig(mode, GameScene);
+  // The config no longer needs the scene class passed to it.
+  const config = getPhaserConfig(mode);
 
-  // The main game instance
+  // Before creating a new game, ensure the container is empty. This is crucial for
+  // React 18's Strict Mode, which can cause components to mount twice in development.
+  const container = document.getElementById('phaser-container');
+  if (container) {
+    container.innerHTML = '';
+  }
+
+  // The main game instance is created without a scene initially.
   const game = new Phaser.Game({
     ...config,
-    parent: 'phaser-container', // Link to the div ID in our component
+    parent: 'phaser-container',
+  });
+
+  // We manually add the scene so we can pass the adapter instance to its init method.
+  // This is the key to our dependency injection.
+  const sceneInstance = new GameScene();
+  game.scene.add('default', sceneInstance, true, {
+    physicsAdapter: new PhysicsAdapter(sceneInstance)
   });
 
   return game;
@@ -46,9 +61,13 @@ const PhaserGame = () => {
   useEffect(() => {
     // This effect now depends on gameKey, so it will re-run when the key changes
     if (typeof window !== 'undefined') {
-      initializePhaser(physicsMode).then(game => {
-        gameRef.current = game;
-      });
+      initializePhaser(physicsMode)
+        .then(game => {
+          gameRef.current = game;
+        })
+        .catch(error => {
+          console.error("Error initializing Phaser game:", error);
+        });
     }
 
     return () => {
