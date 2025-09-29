@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 
-const getPhaserConfig = (mode, scene) => {
+const getPhaserConfig = (mode) => {
   const physicsConfig = {
     default: mode,
     arcade: {
@@ -22,7 +22,7 @@ const getPhaserConfig = (mode, scene) => {
       autoCenter: Phaser.Scale.CENTER_BOTH
     },
     physics: physicsConfig,
-    scene: [scene], // Use the dynamically imported scene
+    scene: [], // Scene is now added manually to allow for dependency injection
     backgroundColor: '#000000',
   };
 };
